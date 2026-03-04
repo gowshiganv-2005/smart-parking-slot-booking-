@@ -140,8 +140,10 @@ def api_admin_login():
 
     if username == config.ADMIN_USERNAME and password == config.ADMIN_PASSWORD:
         session['is_admin'] = True
+        print(f"[AUTH] Admin logged in: {username}")
         return jsonify({'success': True, 'message': 'Admin login successful'})
-
+    
+    print(f"[AUTH] Admin login failed for: {username}")
     return jsonify({'success': False, 'message': 'Invalid admin credentials'}), 401
 
 

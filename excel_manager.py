@@ -26,8 +26,8 @@ def init_excel():
     ws_users.title = 'Users'
     ws_users.append(['UserID', 'Name', 'Email', 'Password'])
     # Add default users that will ALWAYS exist even after Vercel resets
-    ws_users.append([1, 'Test User', 'test@example.com', generate_password_hash('password123')])
-    ws_users.append([2, 'Jeevan Samuel', 'jeevansamuvel12@gmail.com', generate_password_hash('password123')])
+    ws_users.append([1, 'Test User', 'test@example.com', generate_password_hash('123456')])
+    ws_users.append([2, 'Jeevan Samuel', 'jeevansamuvel12@gmail.com', generate_password_hash('123456')])
 
     # Sheet 2: ParkingSlots
     ws_slots = wb.create_sheet('ParkingSlots')
