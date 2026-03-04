@@ -7,6 +7,7 @@ import os
 import threading
 from openpyxl import Workbook, load_workbook
 from datetime import datetime
+from werkzeug.security import generate_password_hash
 import config
 
 # Thread lock to prevent concurrent Excel file access
@@ -25,7 +26,6 @@ def init_excel():
     ws_users.title = 'Users'
     ws_users.append(['UserID', 'Name', 'Email', 'Password'])
     # Add a default test user (password: password123)
-    from werkzeug.security import generate_password_hash
     ws_users.append([1, 'Test User', 'test@example.com', generate_password_hash('password123')])
 
     # Sheet 2: ParkingSlots
