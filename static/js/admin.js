@@ -1,0 +1,621 @@
+/**
+ * Smart Parking System - Admin Dashboard Scripts
+ * Handles slot management, bookings, users, and real-time updates
+ */
+
+// ─── STATE ──────────────────────────────────────────────────
+
+let currentCancelBookingId = null;
+let currentDeleteSlotId = null;
+let refreshInterval = null;
+
+
+// ─── UTILITY FUNCTIONS ──────────────────────────────────────
+
+async function apiRequest(url, method = 'GET', body = null) {
+    const options = {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+    };
+    if (body) options.body = JSON.stringify(body);
+    const response = await fetch(url, options);
+    const data = await response.json();
+    return { ok: response.ok, data };
+}
+
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+
+    const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+    toast.innerHTML = `
+        <span class="toast-icon">${icons[type] || '✅'}</span>
+        <span class="toast-message">${message}</span>
+    `;
+
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 5000);
+}
+
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+}
+
+
+// ─── TAB NAVIGATION ─────────────────────────────────────────
+
+function switchTab(tab) {
+    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+    document.getElementById(`nav-${tab}`).classList.add('active');
+
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.getElementById(`tab-${tab}`).classList.add('active');
+
+    document.getElementById('sidebar').classList.remove('open');
+
+    if (tab === 'overview') loadDashboard();
+    else if (tab === 'slots') loadManageSlots();
+    else if (tab === 'bookings') loadAllBookings();
+    else if (tab === 'users') loadUsers();
+}
+
+
+// ─── LOAD DASHBOARD ─────────────────────────────────────────
+
+async function loadDashboard() {
+    try {
+        const [statsRes, slotsRes, bookingsRes] = await Promise.all([
+            apiRequest('/api/admin/stats'),
+            apiRequest('/api/admin/slots'),
+            apiRequest('/api/admin/bookings')
+        ]);
+
+        if (statsRes.ok) {
+            const s = statsRes.data.stats;
+            document.getElementById('totalSlots').textContent = s.total_slots;
+            document.getElementById('availableSlots').textContent = s.available_slots;
+            document.getElementById('bookedSlots').textContent = s.booked_slots;
+            document.getElementById('totalUsers').textContent = s.total_users;
+        }
+
+        if (slotsRes.ok) {
+            renderDashSlotMap(slotsRes.data.slots);
+        }
+
+        if (bookingsRes.ok) {
+            renderRecentBookings(bookingsRes.data.bookings.slice(-5).reverse());
+        }
+    } catch (e) {
+        console.error('Failed to load dashboard', e);
+    }
+}
+
+
+// ─── RENDER DASHBOARD SLOT MAP ──────────────────────────────
+
+function renderDashSlotMap(slots) {
+    const container = document.getElementById('dashSlotMap');
+    if (!slots.length) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-icon">🅿️</div><h3>No Slots</h3></div>';
+        return;
+    }
+
+    container.innerHTML = slots.map(slot => `
+        <div class="slot-card ${slot.Status.toLowerCase()}" style="cursor: default;">
+            <div class="slot-icon">${slot.Status === 'Available' ? '🚗' : '🔒'}</div>
+            <div class="slot-number">${slot.SlotNumber}</div>
+            <span class="slot-status">${slot.Status}</span>
+        </div>
+    `).join('');
+}
+
+
+// ─── RENDER RECENT BOOKINGS ─────────────────────────────────
+
+function renderRecentBookings(bookings) {
+    const container = document.getElementById('recentBookingsTable');
+    if (!bookings.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📋</div>
+                <h3>No Bookings Yet</h3>
+                <p>No bookings have been made</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>User</th>
+                    <th>Slot</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${bookings.map(b => `
+                    <tr>
+                        <td>#${b.BookingID}</td>
+                        <td>${b.UserName}</td>
+                        <td><span class="status-badge status-booked">${b.SlotNumber}</span></td>
+                        <td>${b.Date}</td>
+                        <td>${b.Time}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+
+// ─── MANAGE SLOTS ───────────────────────────────────────────
+
+async function loadManageSlots() {
+    try {
+        const { ok, data } = await apiRequest('/api/admin/slots');
+        if (ok) {
+            renderManageSlots(data.slots);
+        }
+    } catch (e) {
+        console.error('Failed to load slots', e);
+    }
+}
+
+function renderManageSlots(slots) {
+    const container = document.getElementById('manageSlots');
+    if (!slots.length) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-icon">🅿️</div><h3>No Slots</h3><p>Add a new slot above</p></div>';
+        return;
+    }
+
+    container.innerHTML = slots.map(slot => `
+        <div class="manage-slot-card">
+            <div class="slot-icon" style="font-size: 28px; margin-bottom: 8px;">
+                ${slot.Status === 'Available' ? '🚗' : '🔒'}
+            </div>
+            <div class="slot-number" style="font-size: 16px; font-weight: 700; margin-bottom: 6px;">
+                ${slot.SlotNumber}
+            </div>
+            <span class="status-badge ${slot.Status === 'Available' ? 'status-available' : 'status-booked'}">
+                ${slot.Status}
+            </span>
+            <div class="slot-actions">
+                ${slot.Status === 'Available' ? `
+                    <button class="btn btn-danger btn-sm" onclick="openDeleteModal(${slot.SlotID})" title="Delete slot">
+                        🗑️ Delete
+                    </button>
+                ` : `
+                    <button class="btn btn-outline btn-sm" disabled title="Cannot delete a booked slot">
+                        🔒 In Use
+                    </button>
+                `}
+            </div>
+        </div>
+    `).join('');
+}
+
+
+// ─── ADD SLOT ───────────────────────────────────────────────
+
+async function addSlot() {
+    const input = document.getElementById('newSlotNumber');
+    const slotNumber = input.value.trim();
+
+    if (!slotNumber) {
+        showToast('Please enter a slot number', 'error');
+        return;
+    }
+
+    try {
+        const { ok, data } = await apiRequest('/api/admin/slots/add', 'POST', { slot_number: slotNumber });
+
+        if (ok) {
+            showToast(`Slot ${slotNumber} added successfully!`, 'success');
+            input.value = '';
+            loadManageSlots();
+            loadDashboard();
+        } else {
+            showToast(data.message || 'Failed to add slot', 'error');
+        }
+    } catch (e) {
+        showToast('Network error', 'error');
+    }
+}
+
+
+// ─── DELETE SLOT ────────────────────────────────────────────
+
+function openDeleteModal(slotId) {
+    currentDeleteSlotId = slotId;
+    document.getElementById('deleteModal').classList.add('show');
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteModal').classList.remove('show');
+    currentDeleteSlotId = null;
+}
+
+async function confirmDeleteSlot() {
+    if (!currentDeleteSlotId) return;
+
+    const btn = document.getElementById('confirmDeleteBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Deleting...';
+
+    try {
+        const { ok, data } = await apiRequest('/api/admin/slots/delete', 'POST', { slot_id: currentDeleteSlotId });
+
+        if (ok) {
+            showToast('Slot deleted successfully', 'success');
+            closeDeleteModal();
+            loadManageSlots();
+            loadDashboard();
+        } else {
+            showToast(data.message || 'Failed to delete slot', 'error');
+        }
+    } catch (e) {
+        showToast('Network error', 'error');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Delete Slot';
+}
+
+
+// ─── ALL BOOKINGS ───────────────────────────────────────────
+
+async function loadAllBookings() {
+    try {
+        const { ok, data } = await apiRequest('/api/admin/bookings');
+        if (ok) {
+            renderAllBookings(data.bookings);
+        }
+    } catch (e) {
+        console.error('Failed to load bookings', e);
+    }
+}
+
+function renderAllBookings(bookings) {
+    const container = document.getElementById('allBookingsTable');
+    if (!bookings.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📋</div>
+                <h3>No Bookings</h3>
+                <p>No bookings have been made yet</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <table>
+            <thead>
+                <tr>
+                    <th>Booking ID</th>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Slot</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${bookings.map(b => `
+                    <tr>
+                        <td>#${b.BookingID}</td>
+                        <td>${b.UserName}</td>
+                        <td>${b.UserEmail}</td>
+                        <td><span class="status-badge status-booked">${b.SlotNumber}</span></td>
+                        <td>${b.Date}</td>
+                        <td>${b.Time}</td>
+                        <td>
+                            <button class="btn btn-danger btn-sm" onclick="openCancelModal(${b.BookingID})">
+                                Cancel
+                            </button>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+
+// ─── CANCEL BOOKING (ADMIN) ─────────────────────────────────
+
+function openCancelModal(bookingId) {
+    currentCancelBookingId = bookingId;
+    document.getElementById('cancelModal').classList.add('show');
+}
+
+function closeCancelModal() {
+    document.getElementById('cancelModal').classList.remove('show');
+    currentCancelBookingId = null;
+}
+
+async function confirmCancelBooking() {
+    if (!currentCancelBookingId) return;
+
+    const btn = document.getElementById('confirmCancelBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Cancelling...';
+
+    try {
+        const { ok, data } = await apiRequest('/api/admin/bookings/cancel', 'POST', { booking_id: currentCancelBookingId });
+
+        if (ok) {
+            showToast('Booking cancelled. User has been notified.', 'info');
+            closeCancelModal();
+            loadAllBookings();
+            loadDashboard();
+        } else {
+            showToast(data.message || 'Failed to cancel booking', 'error');
+        }
+    } catch (e) {
+        showToast('Network error', 'error');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Cancel Booking';
+}
+
+
+// ─── USERS TABLE ────────────────────────────────────────────
+
+async function loadUsers() {
+    try {
+        const { ok, data } = await apiRequest('/api/admin/users');
+        if (ok) {
+            renderUsersTable(data.users);
+        }
+    } catch (e) {
+        console.error('Failed to load users', e);
+    }
+}
+
+function renderUsersTable(users) {
+    const container = document.getElementById('usersTable');
+    if (!users.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">👥</div>
+                <h3>No Users</h3>
+                <p>No users have registered yet</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <table>
+            <thead>
+                <tr>
+                    <th>User ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${users.map(u => `
+                    <tr>
+                        <td>#${u.UserID}</td>
+                        <td>${u.Name}</td>
+                        <td>${u.Email}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+
+// ─── LOGOUT ─────────────────────────────────────────────────
+
+async function handleLogout() {
+    try {
+        await apiRequest('/api/logout', 'POST');
+        window.location.href = '/admin';
+    } catch (e) {
+        window.location.href = '/admin';
+    }
+}
+
+
+// ─── QR CODE SCANNER ────────────────────────────────────────
+
+let html5QrCodeScanner = null;
+let scannerRunning = false;
+
+function startScanner() {
+    if (scannerRunning) return;
+
+    html5QrCodeScanner = new Html5Qrcode("qr-reader");
+
+    html5QrCodeScanner.start(
+        { facingMode: "environment" },
+        {
+            fps: 10,
+            qrbox: { width: 250, height: 250 }
+        },
+        onScanSuccess,
+        onScanFailure
+    ).then(() => {
+        scannerRunning = true;
+        document.getElementById('startScanBtn').style.display = 'none';
+        document.getElementById('stopScanBtn').style.display = 'inline-flex';
+        showToast('Camera started. Point at a QR code.', 'info');
+    }).catch(err => {
+        console.error('Scanner error:', err);
+        showToast('Failed to access camera. Please allow camera permissions.', 'error');
+    });
+}
+
+function stopScanner() {
+    if (html5QrCodeScanner && scannerRunning) {
+        html5QrCodeScanner.stop().then(() => {
+            scannerRunning = false;
+            document.getElementById('startScanBtn').style.display = 'inline-flex';
+            document.getElementById('stopScanBtn').style.display = 'none';
+            html5QrCodeScanner.clear();
+        }).catch(err => {
+            console.error('Stop scanner error:', err);
+        });
+    }
+}
+
+function onScanSuccess(decodedText, decodedResult) {
+    // Stop scanner after successful scan
+    stopScanner();
+
+    // Play a beep sound effect
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+        oscillator.connect(audioCtx.destination);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.15);
+    } catch (e) { }
+
+    // Verify the scanned QR code
+    verifyQrCode(decodedText);
+}
+
+function onScanFailure(error) {
+    // Silently ignore scan failures (happens every frame without a QR code)
+}
+
+async function verifyQrCode(qrData) {
+    const resultContainer = document.getElementById('scanResultContainer');
+    resultContainer.innerHTML = `
+        <div class="loading-overlay" style="padding: 40px;">
+            <div class="spinner"></div>
+            <p>Verifying booking...</p>
+        </div>
+    `;
+
+    try {
+        const { ok, data } = await apiRequest('/api/admin/verify-booking', 'POST', { qr_data: qrData });
+
+        if (ok && data.verified) {
+            const b = data.booking;
+            resultContainer.innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <div style="width: 64px; height: 64px; background: rgba(34, 197, 94, 0.15); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 16px;">✅</div>
+                    <h3 style="color: var(--accent-green); font-size: 20px; margin-bottom: 4px;">Booking Verified!</h3>
+                    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Active booking found in the system</p>
+                    
+                    <div style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 12px; padding: 20px; text-align: left;">
+                        <div style="display: grid; grid-template-columns: auto 1fr; gap: 12px 16px; font-size: 14px;">
+                            <span style="color: var(--text-muted); font-weight: 600;">Booking ID:</span>
+                            <span style="font-weight: 700;">#${b.BookingID}</span>
+                            
+                            <span style="color: var(--text-muted); font-weight: 600;">User:</span>
+                            <span style="font-weight: 700;">${b.UserName}</span>
+                            
+                            <span style="color: var(--text-muted); font-weight: 600;">Email:</span>
+                            <span>${b.UserEmail}</span>
+                            
+                            <span style="color: var(--text-muted); font-weight: 600;">Slot:</span>
+                            <span><span class="status-badge status-booked">${b.SlotNumber}</span></span>
+                            
+                            <span style="color: var(--text-muted); font-weight: 600;">Date:</span>
+                            <span>${b.Date}</span>
+                            
+                            <span style="color: var(--text-muted); font-weight: 600;">Time:</span>
+                            <span>${b.Time}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (ok && !data.verified) {
+            resultContainer.innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <div style="width: 64px; height: 64px; background: rgba(249, 115, 22, 0.15); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 16px;">⚠️</div>
+                    <h3 style="color: var(--accent-orange); font-size: 20px; margin-bottom: 4px;">Booking Not Active</h3>
+                    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">${data.message}</p>
+                    ${data.qr_info ? `
+                        <div style="background: rgba(249, 115, 22, 0.08); border: 1px solid rgba(249, 115, 22, 0.2); border-radius: 12px; padding: 16px; text-align: left; font-size: 13px;">
+                            <p><strong>QR Info:</strong> ${data.qr_info.user_name} — Slot ${data.qr_info.slot_number}</p>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        } else {
+            resultContainer.innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <div style="width: 64px; height: 64px; background: rgba(239, 68, 68, 0.15); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 16px;">❌</div>
+                    <h3 style="color: var(--accent-red); font-size: 20px; margin-bottom: 4px;">Invalid QR Code</h3>
+                    <p style="color: var(--text-muted); font-size: 13px;">${data.message || 'This QR code is not from the Smart Parking system.'}</p>
+                </div>
+            `;
+        }
+    } catch (e) {
+        resultContainer.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+                <div style="width: 64px; height: 64px; background: rgba(239, 68, 68, 0.15); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 16px;">❌</div>
+                <h3 style="color: var(--accent-red); font-size: 20px; margin-bottom: 4px;">Verification Error</h3>
+                <p style="color: var(--text-muted); font-size: 13px;">Network error occurred during verification.</p>
+            </div>
+        `;
+    }
+}
+
+function verifyManualQr() {
+    const input = document.getElementById('manualQrInput');
+    const qrData = input.value.trim();
+    if (!qrData) {
+        showToast('Please paste QR code data', 'error');
+        return;
+    }
+    verifyQrCode(qrData);
+}
+
+function closeVerifyModal() {
+    document.getElementById('verifyModal').classList.remove('show');
+}
+
+
+// ─── REAL-TIME UPDATES ──────────────────────────────────────
+
+function startAutoRefresh() {
+    refreshInterval = setInterval(() => {
+        const activeTab = document.querySelector('.tab-content.active');
+        if (activeTab) {
+            const id = activeTab.id;
+            if (id === 'tab-overview') loadDashboard();
+            else if (id === 'tab-slots') loadManageSlots();
+            else if (id === 'tab-bookings') loadAllBookings();
+            else if (id === 'tab-users') loadUsers();
+            // Don't auto-refresh scanner tab
+        }
+    }, 10000);
+}
+
+
+// ─── ENTER KEY FOR ADD SLOT ─────────────────────────────────
+
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && document.activeElement.id === 'newSlotNumber') {
+        addSlot();
+    }
+    if (e.key === 'Enter' && document.activeElement.id === 'manualQrInput') {
+        verifyManualQr();
+    }
+});
+
+
+// ─── INITIALIZATION ─────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadDashboard();
+    startAutoRefresh();
+});

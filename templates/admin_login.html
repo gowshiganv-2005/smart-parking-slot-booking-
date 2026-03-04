@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Smart Parking System - Admin Login">
+    <title>Smart Parking | Admin Login</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+    <!-- Animated Background -->
+    <div class="bg-animation">
+        <div class="orb"></div>
+        <div class="orb"></div>
+        <div class="orb"></div>
+    </div>
+
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="logo">
+                <div class="logo-icon"
+                    style="background: linear-gradient(135deg, #f97316 0%, #ef4444 100%); box-shadow: 0 0 20px rgba(249, 115, 22, 0.3);">
+                    🛡️</div>
+                <h1
+                    style="background: linear-gradient(135deg, #f97316 0%, #ef4444 100%); -webkit-background-clip: text; background-clip: text;">
+                    Admin Panel</h1>
+                <p>Sign in to manage parking system</p>
+            </div>
+
+            <div id="alertBox" class="alert"></div>
+
+            <form id="adminLoginForm" onsubmit="return false;">
+                <div class="form-group">
+                    <label for="username">Admin Username</label>
+                    <input type="text" id="username" placeholder="Enter admin username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Admin Password</label>
+                    <input type="password" id="password" placeholder="Enter admin password" required>
+                </div>
+                <button type="submit" class="btn btn-primary" id="adminLoginBtn" onclick="handleAdminLogin()"
+                    style="background: linear-gradient(135deg, #f97316 0%, #ef4444 100%); box-shadow: 0 0 20px rgba(249, 115, 22, 0.3);">
+                    Admin Sign In
+                </button>
+            </form>
+
+            <div class="auth-link">
+                <a href="/login">← Back to User Login</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/auth.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Smart Parking System - Admin Dashboard">
+    <title>Smart Parking | Admin Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+
+<body>
+    <!-- Animated Background -->
+    <div class="bg-animation">
+        <div class="orb"></div>
+        <div class="orb"></div>
+        <div class="orb"></div>
+    </div>
+
+    <!-- Mobile Toggle -->
+    <button class="mobile-toggle" id="mobileToggle" onclick="toggleSidebar()">☰</button>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon" style="background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);">🛡️</div>
+                <div>
+                    <h2
+                        style="background: linear-gradient(135deg, #f97316 0%, #ef4444 100%); -webkit-background-clip: text; background-clip: text;">
+                        Admin Panel</h2>
+                    <small>Parking Management</small>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <button class="nav-item active" onclick="switchTab('overview')" id="nav-overview">
+                    <span class="nav-icon">📊</span> Dashboard
+                </button>
+                <button class="nav-item" onclick="switchTab('scanner')" id="nav-scanner">
+                    <span class="nav-icon">📷</span> QR Scanner
+                </button>
+                <button class="nav-item" onclick="switchTab('slots')" id="nav-slots">
+                    <span class="nav-icon">🅿️</span> Manage Slots
+                </button>
+                <button class="nav-item" onclick="switchTab('bookings')" id="nav-bookings">
+                    <span class="nav-icon">📋</span> All Bookings
+                </button>
+                <button class="nav-item" onclick="switchTab('users')" id="nav-users">
+                    <span class="nav-icon">👥</span> Users
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar" style="background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);">A
+                    </div>
+                    <div class="user-details">
+                        <div class="user-name">Administrator</div>
+                        <div class="user-email">System Admin</div>
+                    </div>
+                </div>
+                <button class="nav-item" onclick="handleLogout()" id="logoutBtn">
+                    <span class="nav-icon">🚪</span> Sign Out
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+
+            <!-- DASHBOARD OVERVIEW -->
+            <div class="tab-content active" id="tab-overview">
+                <div class="page-header">
+                    <h1>📊 Admin Dashboard</h1>
+                    <p>Overview of parking system statistics</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card blue">
+                        <div class="stat-icon">🅿️</div>
+                        <div class="stat-value" id="totalSlots">-</div>
+                        <div class="stat-label">Total Slots</div>
+                    </div>
+                    <div class="stat-card green">
+                        <div class="stat-icon">🟢</div>
+                        <div class="stat-value" id="availableSlots">-</div>
+                        <div class="stat-label">Available</div>
+                    </div>
+                    <div class="stat-card orange">
+                        <div class="stat-icon">🔴</div>
+                        <div class="stat-value" id="bookedSlots">-</div>
+                        <div class="stat-label">Booked</div>
+                    </div>
+                    <div class="stat-card purple">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-value" id="totalUsers">-</div>
+                        <div class="stat-label">Registered Users</div>
+                    </div>
+                </div>
+
+                <!-- Quick View - Slot Map -->
+                <div class="section-header">
+                    <h2>Slot Overview</h2>
+                    <button class="btn btn-outline btn-sm" onclick="loadDashboard()">🔄 Refresh</button>
+                </div>
+                <div class="parking-grid" id="dashSlotMap">
+                    <div class="loading-overlay">
+                        <div class="spinner"></div>
+                        <p>Loading...</p>
+                    </div>
+                </div>
+
+                <!-- Recent Bookings -->
+                <div class="section-header" style="margin-top: 32px;">
+                    <h2>Recent Bookings</h2>
+                </div>
+                <div class="table-container" id="recentBookingsTable">
+                    <div class="loading-overlay">
+                        <div class="spinner"></div>
+                        <p>Loading bookings...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MANAGE SLOTS -->
+            <div class="tab-content" id="tab-slots">
+                <div class="page-header">
+                    <h1>🅿️ Manage Parking Slots</h1>
+                    <p>Add, view, and remove parking slots</p>
+                </div>
+
+                <div class="section-header">
+                    <h2>Add New Slot</h2>
+                </div>
+                <div class="inline-form" id="addSlotForm">
+                    <input type="text" id="newSlotNumber" placeholder="Enter slot number (e.g., P-021)" />
+                    <button class="btn btn-success btn-sm" onclick="addSlot()">➕ Add Slot</button>
+                </div>
+
+                <div class="section-header">
+                    <h2>All Slots</h2>
+                    <div>
+                        <span class="badge badge-available" style="margin-right: 8px;">● Available</span>
+                        <span class="badge badge-booked">● Booked</span>
+                    </div>
+                </div>
+                <div class="slot-management-grid" id="manageSlots">
+                    <div class="loading-overlay">
+                        <div class="spinner"></div>
+                        <p>Loading slots...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ALL BOOKINGS -->
+            <div class="tab-content" id="tab-bookings">
+                <div class="page-header">
+                    <h1>📋 All Bookings</h1>
+                    <p>View and manage all user bookings</p>
+                </div>
+
+                <div class="table-container" id="allBookingsTable">
+                    <div class="loading-overlay">
+                        <div class="spinner"></div>
+                        <p>Loading bookings...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- USERS -->
+            <div class="tab-content" id="tab-users">
+                <div class="page-header">
+                    <h1>👥 Registered Users</h1>
+                    <p>View all registered users</p>
+                </div>
+
+                <div class="table-container" id="usersTable">
+                    <div class="loading-overlay">
+                        <div class="spinner"></div>
+                        <p>Loading users...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QR SCANNER -->
+            <div class="tab-content" id="tab-scanner">
+                <div class="page-header">
+                    <h1>📷 QR Code Scanner</h1>
+                    <p>Scan a user's booking QR code to verify their parking details</p>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start;">
+                    <!-- Scanner Area -->
+                    <div
+                        style="background: var(--bg-card); border: 1px solid var(--border-glass); border-radius: var(--radius-lg); padding: 24px;">
+                        <h3 style="margin-bottom: 16px; font-size: 16px;">📸 Camera Scanner</h3>
+                        <div id="qr-reader" style="width: 100%; border-radius: 12px; overflow: hidden;"></div>
+                        <div style="margin-top: 16px; display: flex; gap: 12px;">
+                            <button class="btn btn-success btn-sm" id="startScanBtn" onclick="startScanner()"
+                                style="flex: 1;">
+                                📷 Start Camera
+                            </button>
+                            <button class="btn btn-danger btn-sm" id="stopScanBtn" onclick="stopScanner()"
+                                style="flex: 1; display: none;">
+                                ⏹ Stop Camera
+                            </button>
+                        </div>
+                        <p style="color: var(--text-muted); font-size: 13px; margin-top: 12px; text-align: center;">
+                            Point the camera at the user's QR code to scan
+                        </p>
+                    </div>
+
+                    <!-- Scan Result Area -->
+                    <div
+                        style="background: var(--bg-card); border: 1px solid var(--border-glass); border-radius: var(--radius-lg); padding: 24px;">
+                        <h3 style="margin-bottom: 16px; font-size: 16px;">📋 Scan Result</h3>
+                        <div id="scanResultContainer">
+                            <div class="empty-state" style="padding: 40px 20px;">
+                                <div class="empty-icon">📷</div>
+                                <h3>No QR Code Scanned</h3>
+                                <p>Start the camera and scan a booking QR code to see the details here</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Manual QR Input -->
+                <div
+                    style="background: var(--bg-card); border: 1px solid var(--border-glass); border-radius: var(--radius-lg); padding: 24px; margin-top: 24px;">
+                    <h3 style="margin-bottom: 12px; font-size: 16px;">⌨️ Manual QR Data Entry</h3>
+                    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">If camera scanning
+                        doesn't work, paste the QR code data here:</p>
+                    <div class="inline-form">
+                        <input type="text" id="manualQrInput" placeholder="Paste QR code data here..." />
+                        <button class="btn btn-success btn-sm" onclick="verifyManualQr()">🔍 Verify</button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Cancel Booking Modal -->
+    <div class="modal-overlay" id="cancelModal">
+        <div class="modal">
+            <h3>⚠️ Cancel Booking</h3>
+            <p>Are you sure you want to cancel this booking? The user will be notified by email.</p>
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="closeCancelModal()">Keep Booking</button>
+                <button class="btn btn-danger" id="confirmCancelBtn" onclick="confirmCancelBooking()">
+                    Cancel Booking
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Slot Modal -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal">
+            <h3>🗑️ Delete Slot</h3>
+            <p>Are you sure you want to delete this parking slot? This action cannot be undone.</p>
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="closeDeleteModal()">Keep Slot</button>
+                <button class="btn btn-danger" id="confirmDeleteBtn" onclick="confirmDeleteSlot()">
+                    Delete Slot
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Verification Result Modal -->
+    <div class="modal-overlay" id="verifyModal">
+        <div class="modal" style="max-width: 520px;">
+            <div id="verifyModalContent">
+            </div>
+            <div class="modal-actions" style="justify-content: center; margin-top: 20px;">
+                <button class="btn btn-outline" onclick="closeVerifyModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/admin.js"></script>
+</body>
+
+</html>
