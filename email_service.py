@@ -21,14 +21,22 @@ def _send_email(to_email, subject, html_body):
             msg['Subject'] = subject
             msg.attach(MIMEText(html_body, 'html'))
 
-            with smtplib.SMTP(config.SMTP_SERVER, config.SMTP_PORT) as server:
-                server.starttls()
-                server.login(config.SMTP_EMAIL, config.SMTP_PASSWORD)
-                server.send_message(msg)
+            server = smtplib.SMTP(config.SMTP_SERVER, config.SMTP_PORT)
+            server.starttls()
+            server.login(config.SMTP_EMAIL, config.SMTP_PASSWORD)
+            server.send_message(msg)
+            server.quit()  # Explicitly quit the server connection
 
             print(f"[EMAIL] Successfully sent to {to_email}")
         except Exception as e:
             print(f"[EMAIL ERROR] Failed to send to {to_email}: {str(e)}")
+        finally:
+            if server:
+                try:
+                    server.quit()
+                except Exception as e:
+                    print(f"[EMAIL ERROR] Failed to quit SMTP server: {str(e)}")
+
 
     thread = threading.Thread(target=_send)
     thread.daemon = True
