@@ -24,6 +24,9 @@ def init_excel():
     ws_users = wb.active
     ws_users.title = 'Users'
     ws_users.append(['UserID', 'Name', 'Email', 'Password'])
+    # Add a default test user (password: password123)
+    from werkzeug.security import generate_password_hash
+    ws_users.append([1, 'Test User', 'test@example.com', generate_password_hash('password123')])
 
     # Sheet 2: ParkingSlots
     ws_slots = wb.create_sheet('ParkingSlots')
@@ -40,7 +43,10 @@ def init_excel():
 
 
 def _load_workbook():
-    """Load the workbook safely."""
+    """Load the workbook safely. Re-initializes if file is missing."""
+    if not os.path.exists(config.EXCEL_FILE):
+        print(f"[WARN] Excel file missing at {config.EXCEL_FILE}. Re-initializing...")
+        init_excel()
     return load_workbook(config.EXCEL_FILE)
 
 

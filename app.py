@@ -99,8 +99,10 @@ def api_register():
     user = excel_manager.register_user(name, email, hashed)
 
     if not user:
+        print(f"[AUTH] Registration failed: Email {email} already exists")
         return jsonify({'success': False, 'message': 'Email already registered'}), 409
 
+    print(f"[AUTH] User registered: {email}")
     return jsonify({'success': True, 'message': 'Registration successful! Please login.'})
 
 
@@ -114,13 +116,19 @@ def api_login():
         return jsonify({'success': False, 'message': 'Email and password are required'}), 400
 
     user = excel_manager.get_user_by_email(email)
-    if not user or not check_password_hash(user['Password'], password):
+    if not user:
+        print(f"[AUTH] Login failed: User {email} not found")
+        return jsonify({'success': False, 'message': 'Invalid email or password'}), 401
+    
+    if not check_password_hash(user['Password'], password):
+        print(f"[AUTH] Login failed: Wrong password for {email}")
         return jsonify({'success': False, 'message': 'Invalid email or password'}), 401
 
     session['user_id'] = user['UserID']
     session['user_name'] = user['Name']
     session['user_email'] = user['Email']
 
+    print(f"[AUTH] User logged in: {email}")
     return jsonify({'success': True, 'message': 'Login successful'})
 
 
