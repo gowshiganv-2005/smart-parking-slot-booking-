@@ -4,7 +4,11 @@ import os
 SECRET_KEY = os.environ.get('SECRET_KEY', 'smart-parking-secret-key-2026')
 
 # Excel Database Path
-EXCEL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'parking_data.xlsx')
+# On Vercel, we must use /tmp for writing files
+if os.environ.get('VERCEL'):
+    EXCEL_FILE = '/tmp/parking_data.xlsx'
+else:
+    EXCEL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'parking_data.xlsx')
 
 # Email Configuration (Update these with your actual credentials)
 SMTP_SERVER = 'smtp.gmail.com'

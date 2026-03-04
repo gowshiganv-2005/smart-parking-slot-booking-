@@ -15,7 +15,11 @@ app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
 
 # Initialize Excel database on startup
-excel_manager.init_excel()
+try:
+    excel_manager.init_excel()
+    print(f"[INFO] Excel database initialized at {config.EXCEL_FILE}")
+except Exception as e:
+    print(f"[ERROR] Failed to initialize Excel: {e}")
 
 
 # ─── AUTH DECORATORS ─────────────────────────────────────────────
