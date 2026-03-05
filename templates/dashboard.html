@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Smart Parking System - User Dashboard">
+    <title>Smart Parking | Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+    <!-- Animated Background -->
+    <div class="bg-animation">
+        <div class="orb"></div>
+        <div class="orb"></div>
+        <div class="orb"></div>
+    </div>
+
+    <!-- Mobile Toggle -->
+    <button class="mobile-toggle" id="mobileToggle" onclick="toggleSidebar()">☰</button>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon">🅿️</div>
+                <div>
+                    <h2>Smart Parking</h2>
+                    <small>User Dashboard</small>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <button class="nav-item active" onclick="switchTab('overview')" id="nav-overview">
+                    <span class="nav-icon">📊</span> Overview
+                </button>
+                <button class="nav-item" onclick="switchTab('slots')" id="nav-slots">
+                    <span class="nav-icon">🅿️</span> Book a Slot
+                </button>
+                <button class="nav-item" onclick="switchTab('bookings')" id="nav-bookings">
+                    <span class="nav-icon">📋</span> My Bookings
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar">U</div>
+                    <div class="user-details">
+                        <div class="user-name" id="userName">User</div>
+                        <div class="user-email" id="userEmail">user@email.com</div>
+                    </div>
+                </div>
+                <button class="nav-item" onclick="handleLogout()" id="logoutBtn">
+                    <span class="nav-icon">🚪</span> Sign Out
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+
+            <!-- OVERVIEW TAB -->
+            <div class="tab-content active" id="tab-overview">
+                <div class="page-header">
+                    <h1>👋 Welcome back, <span id="welcomeName">User</span>!</h1>
+                    <p>Book your parking slot in seconds</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card green">
+                        <div class="stat-icon">🟢</div>
+                        <div class="stat-value" id="availableCount">-</div>
+                        <div class="stat-label">Available Slots</div>
+                    </div>
+                    <div class="stat-card orange">
+                        <div class="stat-icon">🔴</div>
+                        <div class="stat-value" id="bookedCount">-</div>
+                        <div class="stat-label">Booked Slots</div>
+                    </div>
+                    <div class="stat-card blue">
+                        <div class="stat-icon">🅿️</div>
+                        <div class="stat-value" id="totalCount">-</div>
+                        <div class="stat-label">Total Slots</div>
+                    </div>
+                    <div class="stat-card purple">
+                        <div class="stat-icon">📋</div>
+                        <div class="stat-value" id="myBookingsCount">-</div>
+                        <div class="stat-label">My Bookings</div>
+                    </div>
+                </div>
+
+                <div class="section-header">
+                    <h2>Quick Book - Available Slots</h2>
+                    <span class="badge badge-available">● <span id="quickAvail">0</span> Available</span>
+                </div>
+                <div class="parking-grid" id="overviewSlots">
+                    <div class="loading-overlay">
+                        <div class="spinner"></div>
+                        <p>Loading slots...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOOK SLOT TAB -->
+            <div class="tab-content" id="tab-slots">
+                <div class="page-header">
+                    <h1>🅿️ Book a Parking Slot</h1>
+                    <p>Select an available slot to book instantly</p>
+                </div>
+
+                <div class="section-header">
+                    <h2>All Parking Slots</h2>
+                    <div>
+                        <span class="badge badge-available" style="margin-right: 8px;">● Available</span>
+                        <span class="badge badge-booked">● Booked</span>
+                    </div>
+                </div>
+                <div class="parking-grid" id="allSlots">
+                    <div class="loading-overlay">
+                        <div class="spinner"></div>
+                        <p>Loading slots...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MY BOOKINGS TAB -->
+            <div class="tab-content" id="tab-bookings">
+                <div class="page-header">
+                    <h1>📋 My Bookings</h1>
+                    <p>View and manage your active bookings</p>
+                </div>
+
+                <div class="table-container" id="bookingsTable">
+                    <div class="loading-overlay">
+                        <div class="spinner"></div>
+                        <p>Loading bookings...</p>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Booking Confirmation Modal -->
+    <div class="modal-overlay" id="bookingModal">
+        <div class="modal">
+            <h3>🅿️ Confirm Booking</h3>
+            <p id="bookingModalText">Are you sure you want to book slot <strong id="modalSlotNumber">P-001</strong>?</p>
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-success" id="confirmBookBtn" onclick="confirmBooking()">
+                    Confirm Booking
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cancel Confirmation Modal -->
+    <div class="modal-overlay" id="cancelModal">
+        <div class="modal">
+            <h3>⚠️ Cancel Booking</h3>
+            <p>Are you sure you want to cancel this booking? The slot will become available again.</p>
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="closeCancelModal()">Keep Booking</button>
+                <button class="btn btn-danger" id="confirmCancelBtn" onclick="confirmCancel()">
+                    Cancel Booking
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Code View Modal -->
+    <div class="modal-overlay" id="qrModal">
+        <div class="modal" style="text-align: center;">
+            <h3>📱 Booking QR Code</h3>
+            <p style="margin-bottom: 16px;">Present this QR code at the parking entrance</p>
+            <div id="qrCodeContainer"
+                style="padding: 20px; background: white; border-radius: 16px; display: inline-block; margin-bottom: 16px;">
+                <img id="qrCodeImage" src="" alt="QR Code" style="width: 220px; height: 220px;" />
+            </div>
+            <div id="qrBookingDetails"
+                style="text-align: left; background: rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1);">
+            </div>
+            <div class="modal-actions" style="justify-content: center;">
+                <button class="btn btn-outline" onclick="closeQrModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/user.js"></script>
+</body>
+
+</html>

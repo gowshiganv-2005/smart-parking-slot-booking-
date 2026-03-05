@@ -57,7 +57,11 @@ async function handleLogin() {
         if (ok) {
             showAlert('Login successful! Redirecting...', 'success');
             setTimeout(() => {
-                window.location.href = '/dashboard';
+                if (data.role === 'admin') {
+                    window.location.href = '/admin/dashboard';
+                } else {
+                    window.location.href = '/dashboard';
+                }
             }, 800);
         } else {
             showAlert(data.message || 'Login failed');
