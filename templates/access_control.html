@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parking Access Control - Smart Parking</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .access-card {
+            max-width: 500px;
+            margin: 40px auto;
+            padding: 30px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-lg);
+            text-align: center;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .detail-value {
+            font-weight: 600;
+        }
+
+        .status-hero {
+            font-size: 24px;
+            font-weight: 800;
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .status-pending {
+            background: rgba(52, 152, 219, 0.1);
+            color: #3498db;
+        }
+
+        .status-logged-in {
+            background: rgba(46, 204, 113, 0.1);
+            color: #2ecc71;
+        }
+
+        .status-logged-out {
+            background: rgba(149, 165, 166, 0.1);
+            color: #95a5a6;
+        }
+    </style>
+</head>
+
+<body class="dark-theme">
+    <div class="container">
+        <div class="access-card">
+            <h1>🅿️ Parking Access</h1>
+            <p style="margin-bottom: 24px; opacity: 0.7;">Verification Page</p>
+
+            <div id="bookingDetails">
+                {% if booking %}
+                <div class="status-hero status-{{ booking.UserStatus.lower().replace(' ', '-') }}">
+                    {{ booking.UserStatus }}
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label">User Name</span>
+                    <span class="detail-value">{{ booking.UserName }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">User Email</span>
+                    <span class="detail-value">{{ booking.UserEmail }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Slot Number</span>
+                    <span class="detail-value" style="color: var(--accent-blue);">{{ booking.SlotNumber }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Booking Time</span>
+                    <span class="detail-value">{{ booking.Date }} {{ booking.Time }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Login Time</span>
+                    <span class="detail-value">{{ booking.LoginTime }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Logout Time</span>
+                    <span class="detail-value">{{ booking.LogoutTime }}</span>
+                </div>
+
+                <div style="margin-top: 32px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <button class="btn btn-success" id="loginBtn" onclick="handleAccess('login')" {% if
+                        booking.UserStatus=='Logged In' or booking.UserStatus=='Logged Out' %}disabled{% endif %}>
+                        📥 LOGIN
+                    </button>
+                    <button class="btn btn-danger" id="logoutBtn" onclick="handleAccess('logout')" {% if
+                        booking.UserStatus !='Logged In' %}disabled{% endif %}>
+                        📤 LOGOUT
+                    </button>
+                </div>
+                <input type="hidden" id="bookingIdStore" value="{{ booking.BookingID }}">
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-icon">❌</div>
+                    <h3>Invalid Booking</h3>
+                    <p>This QR code does not correspond to a valid booking.</p>
+                    <a href="/" class="btn btn-primary" style="margin-top: 20px;">Back to Home</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast show ${type}`;
+            setTimeout(() => { toast.className = 'toast'; }, 3000);
+        }
+
+        async function handleAccess(action) {
+            const bookingId = document.getElementById('bookingIdStore')?.value;
+            if (!bookingId) return;
+
+            try {
+                const response = await fetch(`/api/access/${action}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ booking_id: parseInt(bookingId) })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch (e) {
+                showToast('Connection error', 'error');
+            }
+        }
+    </script>
+</body>
+
+</html>

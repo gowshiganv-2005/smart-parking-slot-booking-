@@ -58,6 +58,7 @@ function switchTab(tab) {
     else if (tab === 'slots') loadManageSlots();
     else if (tab === 'bookings') loadAllBookings();
     else if (tab === 'users') loadUsers();
+    else if (tab === 'logs') loadLogs();
 }
 
 
@@ -77,6 +78,9 @@ async function loadDashboard() {
             document.getElementById('availableSlots').textContent = s.available_slots;
             document.getElementById('bookedSlots').textContent = s.booked_slots;
             document.getElementById('totalUsers').textContent = s.total_users;
+            if (document.getElementById('parkedVehicles')) {
+                document.getElementById('parkedVehicles').textContent = s.parked_vehicles || 0;
+            }
         }
 
         if (slotsRes.ok) {
@@ -84,11 +88,58 @@ async function loadDashboard() {
         }
 
         if (bookingsRes.ok) {
-            renderRecentBookings(bookingsRes.data.bookings.slice(-5).reverse());
+            const allBookings = bookingsRes.data.bookings;
+            const activeVehicles = allBookings.filter(b => b.UserStatus === 'Logged In');
+
+            // Render active vehicles
+            renderActiveVehicles(activeVehicles);
+
+            // Render recent bookings (last 5)
+            renderRecentBookings(allBookings.slice(-5).reverse());
         }
     } catch (e) {
         console.error('Failed to load dashboard', e);
     }
+}
+
+function renderActiveVehicles(activeVehicles) {
+    const container = document.getElementById('activeParkedTable');
+    const countBadge = document.getElementById('activeVehicleCount');
+
+    countBadge.textContent = `${activeVehicles.length} Parked`;
+
+    if (!activeVehicles.length) {
+        container.innerHTML = `
+            <div class="empty-state" style="padding: 20px;">
+                <p style="color: var(--text-muted); font-size: 14px;">No vehicles currently parked</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <table>
+            <thead>
+                <tr>
+                    <th>Vehicle/User</th>
+                    <th>Slot</th>
+                    <th>Check-in Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${activeVehicles.map(v => `
+                    <tr>
+                        <td>
+                            <div style="font-weight: 600;">${v.UserName}</div>
+                            <div style="font-size: 11px; opacity: 0.6;">${v.UserEmail}</div>
+                        </td>
+                        <td><span class="status-badge status-booked">${v.SlotNumber}</span></td>
+                        <td style="font-family: monospace; font-size: 12px; color: var(--accent-green);">${v.LoginTime}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
 }
 
 
@@ -134,7 +185,7 @@ function renderRecentBookings(bookings) {
                     <th>User</th>
                     <th>Slot</th>
                     <th>Date</th>
-                    <th>Time</th>
+                    <th>Status</th>
                 </tr>
             </thead>
             <tbody>
@@ -144,7 +195,11 @@ function renderRecentBookings(bookings) {
                         <td>${b.UserName}</td>
                         <td><span class="status-badge status-booked">${b.SlotNumber}</span></td>
                         <td>${b.Date}</td>
-                        <td>${b.Time}</td>
+                        <td>
+                            <span class="access-badge badge-${(b.UserStatus || 'Pending').toLowerCase().replace(' ', '-')}">
+                                ${b.UserStatus || 'Pending'}
+                            </span>
+                        </td>
                     </tr>
                 `).join('')}
             </tbody>
@@ -181,22 +236,52 @@ function renderManageSlots(slots) {
             <div class="slot-number" style="font-size: 16px; font-weight: 700; margin-bottom: 6px;">
                 ${slot.SlotNumber}
             </div>
-            <span class="status-badge ${slot.Status === 'Available' ? 'status-available' : 'status-booked'}">
+            <span class="status-badge ${slot.Status === 'Available' ? 'status-available' : slot.Status === 'Booked' ? 'status-booked' : 'status-warning'}">
                 ${slot.Status}
             </span>
             <div class="slot-actions">
                 ${slot.Status === 'Available' ? `
-                    <button class="btn btn-danger btn-sm" onclick="openDeleteModal(${slot.SlotID})" title="Delete slot">
-                        🗑️ Delete
-                    </button>
+                    <div style="display: flex; gap: 4px; justify-content: center; width: 100%;">
+                        <button class="btn btn-outline btn-sm" onclick="updateSlotStatus(${slot.SlotID}, 'Maintenance')" style="padding: 4px 8px; font-size: 11px;">
+                            🛠️ Fix
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="openDeleteModal(${slot.SlotID})" style="padding: 4px 8px; font-size: 11px;">
+                            🗑️
+                        </button>
+                    </div>
+                ` : slot.Status === 'Maintenance' ? `
+                    <div style="display: flex; gap: 4px; justify-content: center; width: 100%;">
+                        <button class="btn btn-success btn-sm" onclick="updateSlotStatus(${slot.SlotID}, 'Available')" style="padding: 4px 8px; font-size: 11px;">
+                            ✅ Ready
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="openDeleteModal(${slot.SlotID})" style="padding: 4px 8px; font-size: 11px;">
+                            🗑️
+                        </button>
+                    </div>
                 ` : `
-                    <button class="btn btn-outline btn-sm" disabled title="Cannot delete a booked slot">
-                        🔒 In Use
+                    <button class="btn btn-outline btn-sm" disabled style="width: 100%; opacity: 0.6; font-size: 11px;">
+                        🔒 Occupied
                     </button>
                 `}
             </div>
         </div>
     `).join('');
+}
+
+async function updateSlotStatus(slotId, status) {
+    try {
+        const { ok, data } = await apiRequest('/api/admin/slots/update', 'POST', { slot_id: slotId, status });
+
+        if (ok) {
+            showToast(data.message, 'success');
+            loadManageSlots();
+            loadDashboard();
+        } else {
+            showToast(data.message || 'Update failed', 'error');
+        }
+    } catch (e) {
+        showToast('Network error', 'error');
+    }
 }
 
 
@@ -297,26 +382,39 @@ function renderAllBookings(bookings) {
         <table>
             <thead>
                 <tr>
-                    <th>Booking ID</th>
+                    <th>ID</th>
                     <th>User</th>
-                    <th>Email</th>
                     <th>Slot</th>
-                    <th>Date</th>
-                    <th>Time</th>
+                    <th>Date/Time</th>
+                    <th>Status</th>
+                    <th>Login/Logout</th>
                     <th>Action</th>
                 </tr>
             </thead>
             <tbody>
                 ${bookings.map(b => `
                     <tr>
-                        <td>#${b.BookingID}</td>
-                        <td>${b.UserName}</td>
-                        <td>${b.UserEmail}</td>
-                        <td><span class="status-badge status-booked">${b.SlotNumber}</span></td>
-                        <td>${b.Date}</td>
-                        <td>${b.Time}</td>
+                        <td title="Booking ID #${b.BookingID}">#${b.BookingID}</td>
                         <td>
-                            <button class="btn btn-danger btn-sm" onclick="openCancelModal(${b.BookingID})">
+                            <div style="font-weight: 600;">${b.UserName}</div>
+                            <div style="font-size: 11px; opacity: 0.6;">${b.UserEmail}</div>
+                        </td>
+                        <td><span class="status-badge status-booked">${b.SlotNumber}</span></td>
+                        <td>
+                            <div style="font-size: 13px;">${b.Date}</div>
+                            <div style="font-size: 11px; opacity: 0.6;">${b.Time}</div>
+                        </td>
+                        <td>
+                            <span class="access-badge badge-${(b.UserStatus || 'Pending').toLowerCase().replace(' ', '-')}">
+                                ${b.UserStatus || 'Pending'}
+                            </span>
+                        </td>
+                        <td>
+                            <div style="font-size: 11px;">In: ${b.LoginTime || 'N/A'}</div>
+                            <div style="font-size: 11px;">Out: ${b.LogoutTime || 'N/A'}</div>
+                        </td>
+                        <td>
+                            <button class="btn btn-danger btn-sm" onclick="openCancelModal(${b.BookingID})" style="padding: 4px 8px; font-size: 11px;">
                                 Cancel
                             </button>
                         </td>
@@ -400,6 +498,8 @@ function renderUsersTable(users) {
                     <th>User ID</th>
                     <th>Name</th>
                     <th>Email</th>
+                    <th>Phone</th>
+                    <th>Last Active</th>
                 </tr>
             </thead>
             <tbody>
@@ -408,6 +508,71 @@ function renderUsersTable(users) {
                         <td>#${u.UserID}</td>
                         <td>${u.Name}</td>
                         <td>${u.Email}</td>
+                        <td>${u.Phone || 'N/A'}</td>
+                        <td>
+                            <span style="font-size: 11px; color: ${u.LastActive && u.LastActive !== 'N/A' ? 'var(--accent-green)' : 'var(--text-muted)'};">
+                                ${u.LastActive || 'N/A'}
+                            </span>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+
+// ─── ACTIVITY LOGS ──────────────────────────────────────────
+
+async function loadLogs() {
+    try {
+        const { ok, data } = await apiRequest('/api/admin/logs');
+        if (ok) {
+            renderLogsTable(data.logs);
+        }
+    } catch (e) {
+        console.error('Failed to load logs', e);
+    }
+}
+
+function renderLogsTable(logs) {
+    const container = document.getElementById('logsTable');
+    if (!logs.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📜</div>
+                <h3>No Logs</h3>
+                <p>No activity has been recorded yet</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>User</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${logs.map(log => `
+                    <tr>
+                        <td>
+                            <div style="font-weight: 600;">${log.Time}</div>
+                            <div style="font-size: 11px; color: var(--text-muted);">${log.Date}</div>
+                        </td>
+                        <td>
+                            <div style="font-weight: 600;">${log.UserName}</div>
+                            <div style="font-size: 11px; color: var(--text-muted);">${log.UserEmail}</div>
+                        </td>
+                        <td>
+                            <span class="status-badge ${log.Action.includes('Login') ? 'status-available' : log.Action.includes('Booked') ? 'status-booked' : ''}">
+                                ${log.Action}
+                            </span>
+                        </td>
                     </tr>
                 `).join('')}
             </tbody>
@@ -533,6 +698,11 @@ async function verifyQrCode(qrData) {
                             <span style="color: var(--text-muted); font-weight: 600;">Time:</span>
                             <span>${b.Time}</span>
                         </div>
+                        <div style="margin-top: 20px;">
+                            <a href="/parking-access?booking_id=${b.BookingID}" target="_blank" class="btn btn-outline" style="width: 100%;">
+                                Open Verification Page
+                            </a>
+                        </div>
                     </div>
                 </div>
             `;
@@ -587,6 +757,7 @@ function closeVerifyModal() {
 // ─── REAL-TIME UPDATES ──────────────────────────────────────
 
 function startAutoRefresh() {
+    if (refreshInterval) clearInterval(refreshInterval);
     refreshInterval = setInterval(() => {
         const activeTab = document.querySelector('.tab-content.active');
         if (activeTab) {
@@ -595,7 +766,7 @@ function startAutoRefresh() {
             else if (id === 'tab-slots') loadManageSlots();
             else if (id === 'tab-bookings') loadAllBookings();
             else if (id === 'tab-users') loadUsers();
-            // Don't auto-refresh scanner tab
+            else if (id === 'tab-logs') loadLogs();
         }
     }, 10000);
 }

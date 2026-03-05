@@ -30,10 +30,10 @@ A full-stack **Smart Parking Slot Booking Web Application** with Admin Panel and
 - Cancellation notification emails
 - Beautiful HTML email templates
 
-### 📊 Excel Database
-- Microsoft Excel (.xlsx) as backend database
+### 📊 Google Sheets Database
+- Google Sheets as cloud backend database
 - Thread-safe read/write operations
-- Auto-generates on first run with 20 parking slots
+- Auto-initializes on first run with required tabs
 
 ## 🛠️ Tech Stack
 
@@ -41,7 +41,7 @@ A full-stack **Smart Parking Slot Booking Web Application** with Admin Panel and
 |-------|-----------|
 | Frontend | HTML5, CSS3 (Dark Glassmorphism Theme), JavaScript |
 | Backend | Python Flask 3.0 |
-| Database | Microsoft Excel via openpyxl |
+| Database | Google Sheets API via gspread |
 | Auth | Session-based with Werkzeug password hashing |
 | Email | SMTP via smtplib (threaded, non-blocking) |
 | QR Code | qrcode + Pillow (generation), html5-qrcode (scanning) |

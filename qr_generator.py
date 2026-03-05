@@ -14,17 +14,14 @@ def generate_booking_qr(booking):
     Generate a QR code containing booking details.
     Returns a base64-encoded PNG image string.
     """
-    # Encode booking data as JSON
-    qr_data = json.dumps({
-        'booking_id': booking['BookingID'],
-        'user_name': booking['UserName'],
-        'user_email': booking['UserEmail'],
-        'slot_number': booking['SlotNumber'],
-        'slot_id': booking['SlotID'],
-        'date': booking['Date'],
-        'time': booking['Time'],
-        'system': 'SmartParking'
-    })
+    import config
+    # Generate the access URL
+    access_url = f"{config.BASE_URL}/parking-access?booking_id={booking['BookingID']}"
+
+    # Encode booking data as JSON or just the URL
+    # The requirement says QR should open a special webpage, so many scanners 
+    # will automatically open the URL if it's the primary data.
+    qr_data = access_url
 
     # Create QR code
     qr = qrcode.QRCode(

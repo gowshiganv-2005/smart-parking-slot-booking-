@@ -50,7 +50,9 @@
 }
 
 /* ─── RESET & BASE ───────────────────────────────────────── */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -117,10 +119,23 @@ body {
 }
 
 @keyframes orbFloat {
-    0%, 100% { transform: translate(0, 0) scale(1); }
-    25% { transform: translate(50px, -50px) scale(1.1); }
-    50% { transform: translate(-30px, 30px) scale(0.9); }
-    75% { transform: translate(20px, 60px) scale(1.05); }
+
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    25% {
+        transform: translate(50px, -50px) scale(1.1);
+    }
+
+    50% {
+        transform: translate(-30px, 30px) scale(0.9);
+    }
+
+    75% {
+        transform: translate(20px, 60px) scale(1.05);
+    }
 }
 
 /* ─── AUTH PAGES ─────────────────────────────────────────── */
@@ -183,8 +198,15 @@ body {
 }
 
 @keyframes pulse-glow {
-    0%, 100% { box-shadow: var(--shadow-glow-purple); }
-    50% { box-shadow: 0 0 30px rgba(139, 92, 246, 0.5); }
+
+    0%,
+    100% {
+        box-shadow: var(--shadow-glow-purple);
+    }
+
+    50% {
+        box-shadow: 0 0 30px rgba(139, 92, 246, 0.5);
+    }
 }
 
 /* ─── FORM ELEMENTS ──────────────────────────────────────── */
@@ -251,7 +273,7 @@ body {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
     transition: left 0.5s;
 }
 
@@ -580,10 +602,25 @@ body {
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
-.stat-card.blue::before { background: var(--gradient-cool); }
-.stat-card.green::before { background: var(--gradient-success); }
-.stat-card.orange::before { background: var(--gradient-warm); }
-.stat-card.purple::before { background: var(--gradient-primary); }
+.stat-card.blue::before {
+    background: var(--gradient-cool);
+}
+
+.stat-card.green::before {
+    background: var(--gradient-success);
+}
+
+.stat-card.orange::before {
+    background: var(--gradient-warm);
+}
+
+.stat-card.purple::before {
+    background: var(--gradient-primary);
+}
+
+.stat-card.pink::before {
+    background: var(--accent-pink);
+}
 
 .stat-card:hover {
     transform: translateY(-4px);
@@ -602,10 +639,25 @@ body {
     margin-bottom: 16px;
 }
 
-.stat-card.blue .stat-icon { background: rgba(59, 130, 246, 0.15); }
-.stat-card.green .stat-icon { background: rgba(34, 197, 94, 0.15); }
-.stat-card.orange .stat-icon { background: rgba(249, 115, 22, 0.15); }
-.stat-card.purple .stat-icon { background: rgba(139, 92, 246, 0.15); }
+.stat-card.blue .stat-icon {
+    background: rgba(59, 130, 246, 0.15);
+}
+
+.stat-card.green .stat-icon {
+    background: rgba(34, 197, 94, 0.15);
+}
+
+.stat-card.orange .stat-icon {
+    background: rgba(249, 115, 22, 0.15);
+}
+
+.stat-card.purple .stat-icon {
+    background: rgba(139, 92, 246, 0.15);
+}
+
+.stat-card.pink .stat-icon {
+    background: rgba(236, 72, 153, 0.15);
+}
 
 .stat-card .stat-value {
     font-size: 32px;
@@ -684,8 +736,13 @@ body {
     height: 3px;
 }
 
-.slot-card.available::after { background: var(--accent-green); }
-.slot-card.booked::after { background: var(--accent-red); }
+.slot-card.available::after {
+    background: var(--accent-green);
+}
+
+.slot-card.booked::after {
+    background: var(--accent-red);
+}
 
 .slot-card:hover {
     transform: translateY(-4px);
@@ -791,6 +848,46 @@ body {
     color: var(--accent-red);
 }
 
+.status-warning {
+    background: rgba(249, 115, 22, 0.15);
+    color: var(--accent-orange);
+}
+
+.access-badge {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-block;
+}
+
+.badge-pending {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--accent-blue);
+}
+
+.badge-logged-in {
+    background: rgba(34, 197, 94, 0.15);
+    color: var(--accent-green);
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.3);
+}
+
+.badge-logged-out {
+    background: rgba(148, 163, 184, 0.15);
+    color: var(--text-muted);
+}
+
+.badge-occupied {
+    background: rgba(236, 72, 153, 0.15);
+    color: var(--accent-pink);
+}
+
+.badge-cancelled {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--accent-red);
+}
+
 /* ─── MODAL ──────────────────────────────────────────────── */
 .modal-overlay {
     position: fixed;
@@ -872,9 +969,17 @@ body {
     animation: slideInRight 0.3s ease-out, fadeOut 0.3s ease-in 4.7s forwards;
 }
 
-.toast-success { border-left: 3px solid var(--accent-green); }
-.toast-error { border-left: 3px solid var(--accent-red); }
-.toast-info { border-left: 3px solid var(--accent-blue); }
+.toast-success {
+    border-left: 3px solid var(--accent-green);
+}
+
+.toast-error {
+    border-left: 3px solid var(--accent-red);
+}
+
+.toast-info {
+    border-left: 3px solid var(--accent-blue);
+}
 
 .toast .toast-icon {
     font-size: 20px;
@@ -956,7 +1061,9 @@ body {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .loading-overlay {
@@ -978,48 +1085,125 @@ body {
 
 /* ─── ANIMATIONS ─────────────────────────────────────────── */
 @keyframes slideUp {
-    from { opacity: 0; transform: translateY(30px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 @keyframes slideDown {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 @keyframes slideInRight {
-    from { opacity: 0; transform: translateX(100px); }
-    to { opacity: 1; transform: translateX(0); }
+    from {
+        opacity: 0;
+        transform: translateX(100px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes fadeOut {
-    from { opacity: 1; }
-    to { opacity: 0; }
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
 }
 
 /* Staggered animation for grid items */
-.slot-card { animation: slideUp 0.5s ease-out backwards; }
-.slot-card:nth-child(1) { animation-delay: 0.0s; }
-.slot-card:nth-child(2) { animation-delay: 0.05s; }
-.slot-card:nth-child(3) { animation-delay: 0.1s; }
-.slot-card:nth-child(4) { animation-delay: 0.15s; }
-.slot-card:nth-child(5) { animation-delay: 0.2s; }
-.slot-card:nth-child(6) { animation-delay: 0.25s; }
-.slot-card:nth-child(7) { animation-delay: 0.3s; }
-.slot-card:nth-child(8) { animation-delay: 0.35s; }
-.slot-card:nth-child(9) { animation-delay: 0.4s; }
-.slot-card:nth-child(10) { animation-delay: 0.45s; }
+.slot-card {
+    animation: slideUp 0.5s ease-out backwards;
+}
 
-.stat-card { animation: slideUp 0.6s ease-out backwards; }
-.stat-card:nth-child(1) { animation-delay: 0.1s; }
-.stat-card:nth-child(2) { animation-delay: 0.2s; }
-.stat-card:nth-child(3) { animation-delay: 0.3s; }
-.stat-card:nth-child(4) { animation-delay: 0.4s; }
+.slot-card:nth-child(1) {
+    animation-delay: 0.0s;
+}
+
+.slot-card:nth-child(2) {
+    animation-delay: 0.05s;
+}
+
+.slot-card:nth-child(3) {
+    animation-delay: 0.1s;
+}
+
+.slot-card:nth-child(4) {
+    animation-delay: 0.15s;
+}
+
+.slot-card:nth-child(5) {
+    animation-delay: 0.2s;
+}
+
+.slot-card:nth-child(6) {
+    animation-delay: 0.25s;
+}
+
+.slot-card:nth-child(7) {
+    animation-delay: 0.3s;
+}
+
+.slot-card:nth-child(8) {
+    animation-delay: 0.35s;
+}
+
+.slot-card:nth-child(9) {
+    animation-delay: 0.4s;
+}
+
+.slot-card:nth-child(10) {
+    animation-delay: 0.45s;
+}
+
+.stat-card {
+    animation: slideUp 0.6s ease-out backwards;
+}
+
+.stat-card:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.stat-card:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.stat-card:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+.stat-card:nth-child(4) {
+    animation-delay: 0.4s;
+}
 
 /* ─── RESPONSIVE ─────────────────────────────────────────── */
 @media (max-width: 1024px) {

@@ -81,11 +81,12 @@ async function handleLogin() {
 async function handleRegister() {
     const name = document.getElementById('name').value.trim();
     const email = document.getElementById('email').value.trim();
+    const phone = document.getElementById('phone').value.trim();
     const password = document.getElementById('password').value.trim();
     const confirmPassword = document.getElementById('confirmPassword').value.trim();
     const btn = document.getElementById('registerBtn');
 
-    if (!name || !email || !password || !confirmPassword) {
+    if (!name || !email || !phone || !password || !confirmPassword) {
         showAlert('Please fill in all fields');
         return;
     }
@@ -105,7 +106,7 @@ async function handleRegister() {
     btn.innerHTML = '<span class="spinner"></span> Creating Account...';
 
     try {
-        const { ok, data } = await apiRequest('/api/register', 'POST', { name, email, password });
+        const { ok, data } = await apiRequest('/api/register', 'POST', { name, email, phone, password });
 
         if (ok) {
             showAlert('Account created successfully! Redirecting to login...', 'success');
@@ -164,7 +165,7 @@ async function handleAdminLogin() {
 
 // ─── ENTER KEY HANDLER ──────────────────────────────────────
 
-document.addEventListener('keydown', function(e) {
+document.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') {
         // Determine which form we're on
         if (document.getElementById('loginForm')) {

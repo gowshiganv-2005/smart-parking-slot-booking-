@@ -53,6 +53,9 @@
                 <button class="nav-item" onclick="switchTab('users')" id="nav-users">
                     <span class="nav-icon">👥</span> Users
                 </button>
+                <button class="nav-item" onclick="switchTab('logs')" id="nav-logs">
+                    <span class="nav-icon">📜</span> Activity Logs
+                </button>
             </nav>
 
             <div class="sidebar-footer">
@@ -99,7 +102,12 @@
                     <div class="stat-card purple">
                         <div class="stat-icon">👥</div>
                         <div class="stat-value" id="totalUsers">-</div>
-                        <div class="stat-label">Registered Users</div>
+                        <div class="stat-label">Users</div>
+                    </div>
+                    <div class="stat-card pink">
+                        <div class="stat-icon">🚗</div>
+                        <div class="stat-value" id="parkedVehicles">-</div>
+                        <div class="stat-label">Parked</div>
                     </div>
                 </div>
 
@@ -112,6 +120,17 @@
                     <div class="loading-overlay">
                         <div class="spinner"></div>
                         <p>Loading...</p>
+                    </div>
+                </div>
+
+                <!-- Active Parked Vehicles -->
+                <div class="section-header" style="margin-top: 32px;">
+                    <h2>🚗 Active Parked Vehicles</h2>
+                    <span class="badge badge-booked" id="activeVehicleCount">0 Parked</span>
+                </div>
+                <div class="table-container" id="activeParkedTable">
+                    <div class="empty-state" style="padding: 20px;">
+                        <p>No vehicles currently parked</p>
                     </div>
                 </div>
 
@@ -183,6 +202,21 @@
                     <div class="loading-overlay">
                         <div class="spinner"></div>
                         <p>Loading users...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ACTIVITY LOGS -->
+            <div class="tab-content" id="tab-logs">
+                <div class="page-header">
+                    <h1>📜 Activity Logs</h1>
+                    <p>Monitor system activity and user login status</p>
+                </div>
+
+                <div class="table-container" id="logsTable">
+                    <div class="loading-overlay">
+                        <div class="spinner"></div>
+                        <p>Loading activity logs...</p>
                     </div>
                 </div>
             </div>

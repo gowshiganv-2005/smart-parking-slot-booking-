@@ -23,3 +23,8 @@ ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'admin@smartparking.com')
 
 # Parking Configuration
 TOTAL_SLOTS = 20
+BASE_URL = os.environ.get('BASE_URL', 'http://127.0.0.1:5000')
+
+# Google Sheets Configuration
+GSHEET_ID = '1ETo_KdLwhE1Y_mhPXCDjwVhe1xFIPeigyx3qvobOrx4'
+GSHEET_CREDENTIALS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'aqueous-cortex-482804-k1-88c2cdf0fee4.json')

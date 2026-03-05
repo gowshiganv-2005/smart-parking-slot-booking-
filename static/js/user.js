@@ -73,6 +73,7 @@ async function loadUserInfo() {
             const user = data.user;
             document.getElementById('userName').textContent = user.Name;
             document.getElementById('userEmail').textContent = user.Email;
+            document.getElementById('userPhone').textContent = user.Phone || 'N/A';
             document.getElementById('welcomeName').textContent = user.Name.split(' ')[0];
             document.getElementById('userAvatar').textContent = user.Name.charAt(0).toUpperCase();
         }
@@ -328,6 +329,20 @@ async function viewQrCode(bookingId) {
 
 function closeQrModal() {
     document.getElementById('qrModal').classList.remove('show');
+}
+
+function downloadQrCode() {
+    const qrImage = document.getElementById('qrCodeImage').src;
+    const bookingDetails = document.getElementById('qrBookingDetails');
+    const bookingIdStr = bookingDetails.querySelector('strong')?.textContent.replace('#', '') || 'unknown';
+
+    const link = document.createElement('a');
+    link.href = qrImage;
+    link.download = `Booking_QR_${bookingIdStr}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('QR Code saved successfully', 'success');
 }
 
 

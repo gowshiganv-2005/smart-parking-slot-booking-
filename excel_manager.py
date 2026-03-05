@@ -24,10 +24,10 @@ def init_excel():
     # Sheet 1: Users
     ws_users = wb.active
     ws_users.title = 'Users'
-    ws_users.append(['UserID', 'Name', 'Email', 'Password'])
-    # Add default users that will ALWAYS exist even after Vercel resets
-    ws_users.append([1, 'Test User', 'test@example.com', generate_password_hash('123456')])
-    ws_users.append([2, 'Jeevan Samuel', 'jeevansamuvel12@gmail.com', generate_password_hash('123456')])
+    ws_users.append(['UserID', 'Name', 'Email', 'Password', 'Phone', 'LastActive'])
+    # Add default users
+    ws_users.append([1, 'Test User', 'test@example.com', generate_password_hash('123456'), '1234567890', 'N/A'])
+    ws_users.append([2, 'Jeevan Samuel', 'jeevansamuvel12@gmail.com', generate_password_hash('123456'), '9876543210', 'N/A'])
 
     # Sheet 2: ParkingSlots
     ws_slots = wb.create_sheet('ParkingSlots')
@@ -37,7 +37,11 @@ def init_excel():
 
     # Sheet 3: Bookings
     ws_bookings = wb.create_sheet('Bookings')
-    ws_bookings.append(['BookingID', 'UserID', 'SlotID', 'SlotNumber', 'Date', 'Time', 'UserName', 'UserEmail'])
+    ws_bookings.append(['BookingID', 'UserID', 'SlotID', 'SlotNumber', 'Date', 'Time', 'UserName', 'UserEmail', 'UserStatus', 'LoginTime', 'LogoutTime'])
+
+    # Sheet 4: ActivityLogs
+    ws_logs = wb.create_sheet('ActivityLogs')
+    ws_logs.append(['LogID', 'UserID', 'UserName', 'UserEmail', 'Action', 'Date', 'Time'])
 
     wb.save(config.EXCEL_FILE)
     print(f"[INFO] Excel database initialized at {config.EXCEL_FILE}")
@@ -69,7 +73,9 @@ def get_user_by_email(email):
                     'UserID': row[0],
                     'Name': row[1],
                     'Email': row[2],
-                    'Password': row[3]
+                    'Password': row[3],
+                    'Phone': row[4] if len(row) > 4 else '',
+                    'LastActive': row[5] if len(row) > 5 else 'N/A'
                 }
         return None
 
@@ -85,12 +91,14 @@ def get_user_by_id(user_id):
                     'UserID': row[0],
                     'Name': row[1],
                     'Email': row[2],
-                    'Password': row[3]
+                    'Password': row[3],
+                    'Phone': row[4] if len(row) > 4 else '',
+                    'LastActive': row[5] if len(row) > 5 else 'N/A'
                 }
         return None
 
 
-def register_user(name, email, password):
+def register_user(name, email, password, phone):
     """Register a new user. Returns the new user dict or None if email exists."""
     with excel_lock:
         wb = _load_workbook()
@@ -108,13 +116,14 @@ def register_user(name, email, password):
                 max_id = max(max_id, row[0])
         new_id = max_id + 1
 
-        ws.append([new_id, name, email, password])
+        ws.append([new_id, name, email, password, phone, 'N/A'])
         _save_workbook(wb)
 
         return {
             'UserID': new_id,
             'Name': name,
-            'Email': email
+            'Email': email,
+            'Phone': phone
         }
 
 
@@ -129,9 +138,30 @@ def get_all_users():
                 users.append({
                     'UserID': row[0],
                     'Name': row[1],
-                    'Email': row[2]
+                    'Email': row[2],
+                    'Phone': row[4] if len(row) > 4 else '',
+                    'LastActive': row[5] if len(row) > 5 else 'N/A'
                 })
         return users
+
+
+def update_user_activity(user_id):
+    """Update the LastActive timestamp for a user."""
+    from datetime import datetime
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with excel_lock:
+        wb = _load_workbook()
+        ws = wb['Users']
+        updated = False
+        for row in ws.iter_rows(min_row=2):
+            if row[0].value == user_id:
+                # Ensure we have enough columns for row (LastActive is col 6)
+                ws.cell(row=row[0].row, column=6, value=now)
+                updated = True
+                break
+        if updated:
+            _save_workbook(wb)
+        return updated
 
 
 # ─── PARKING SLOT OPERATIONS ────────────────────────────────────
@@ -172,12 +202,15 @@ def update_slot_status(slot_id, status):
     with excel_lock:
         wb = _load_workbook()
         ws = wb['ParkingSlots']
+        updated = False
         for row in ws.iter_rows(min_row=2):
             if row[0].value == slot_id:
                 row[2].value = status
-                _save_workbook(wb)
-                return True
-        return False
+                updated = True
+                break
+        if updated:
+            _save_workbook(wb)
+        return updated
 
 
 def add_slot(slot_number):
@@ -265,7 +298,7 @@ def create_booking(user_id, slot_id):
         date_str = now.strftime('%Y-%m-%d')
         time_str = now.strftime('%H:%M:%S')
 
-        ws_bookings.append([new_id, user_id, slot_id, slot_number, date_str, time_str, user_name, user_email])
+        ws_bookings.append([new_id, user_id, slot_id, slot_number, date_str, time_str, user_name, user_email, 'Pending', 'N/A', 'N/A'])
         _save_workbook(wb)
 
         return {
@@ -276,8 +309,54 @@ def create_booking(user_id, slot_id):
             'Date': date_str,
             'Time': time_str,
             'UserName': user_name,
-            'UserEmail': user_email
+            'UserEmail': user_email,
+            'UserStatus': 'Pending',
+            'LoginTime': 'N/A',
+            'LogoutTime': 'N/A'
         }
+
+
+def get_booking_by_id(booking_id):
+    """Get booking details by its ID."""
+    with excel_lock:
+        wb = _load_workbook()
+        ws = wb['Bookings']
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if row and row[0] == booking_id:
+                return {
+                    'BookingID': row[0],
+                    'UserID': row[1],
+                    'SlotID': row[2],
+                    'SlotNumber': row[3],
+                    'Date': row[4],
+                    'Time': row[5],
+                    'UserName': row[6],
+                    'UserEmail': row[7],
+                    'UserStatus': row[8] if len(row) > 8 else 'Pending',
+                    'LoginTime': row[9] if len(row) > 9 else 'N/A',
+                    'LogoutTime': row[10] if len(row) > 10 else 'N/A'
+                }
+        return None
+
+
+def update_booking_access_status(booking_id, status, time=None):
+    """Update user status and login/logout time in a booking."""
+    with excel_lock:
+        wb = _load_workbook()
+        ws = wb['Bookings']
+        updated = False
+        for row in ws.iter_rows(min_row=2):
+            if row[0].value == booking_id:
+                row[8].value = status
+                if status == 'Logged In' and time:
+                    row[9].value = time
+                elif status == 'Logged Out' and time:
+                    row[10].value = time
+                updated = True
+                break
+        if updated:
+            _save_workbook(wb)
+        return updated
 
 
 def cancel_booking(booking_id):
@@ -319,7 +398,10 @@ def get_all_bookings():
                     'Date': row[4],
                     'Time': row[5],
                     'UserName': row[6],
-                    'UserEmail': row[7]
+                    'UserEmail': row[7],
+                    'UserStatus': row[8] if len(row) > 8 else 'Pending',
+                    'LoginTime': row[9] if len(row) > 9 else 'N/A',
+                    'LogoutTime': row[10] if len(row) > 10 else 'N/A'
                 })
         return bookings
 
@@ -340,7 +422,10 @@ def get_user_bookings(user_id):
                     'Date': row[4],
                     'Time': row[5],
                     'UserName': row[6],
-                    'UserEmail': row[7]
+                    'UserEmail': row[7],
+                    'UserStatus': row[8] if len(row) > 8 else 'Pending',
+                    'LoginTime': row[9] if len(row) > 9 else 'N/A',
+                    'LogoutTime': row[10] if len(row) > 10 else 'N/A'
                 })
         return bookings
 
@@ -367,14 +452,66 @@ def get_dashboard_stats():
                 else:
                     booked_slots += 1
 
-        # Count bookings
+        # Count bookings and parked vehicles
         ws_bookings = wb['Bookings']
-        total_bookings = sum(1 for _ in ws_bookings.iter_rows(min_row=2, values_only=True) if _[0])
+        total_bookings = 0
+        parked_vehicles = 0
+        for row in ws_bookings.iter_rows(min_row=2, values_only=True):
+            if row and row[0]:
+                total_bookings += 1
+                if len(row) > 8 and row[8] == 'Logged In':
+                    parked_vehicles += 1
 
         return {
             'total_users': total_users,
             'total_slots': total_slots,
             'available_slots': available_slots,
             'booked_slots': booked_slots,
-            'total_bookings': total_bookings
+            'total_bookings': total_bookings,
+            'parked_vehicles': parked_vehicles
         }
+# ─── ACTIVITY LOGS ─────────────────────────────────────────────
+
+def log_activity(user_id, name, email, action):
+    """Log user/admin activity."""
+    with excel_lock:
+        wb = _load_workbook()
+        ws = wb['ActivityLogs']
+
+        # Generate new LogID
+        max_id = 0
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if row and row[0] and isinstance(row[0], int):
+                max_id = max(max_id, row[0])
+        new_id = max_id + 1
+
+        now = datetime.now()
+        date_str = now.strftime('%Y-%m-%d')
+        time_str = now.strftime('%H:%M:%S')
+
+        ws.append([new_id, user_id, name, email, action, date_str, time_str])
+        _save_workbook(wb)
+        return True
+
+
+def get_all_logs(limit=100):
+    """Get all activity logs, newest first."""
+    with excel_lock:
+        wb = _load_workbook()
+        ws = wb['ActivityLogs']
+        logs = []
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if row and row[0]:
+                logs.append({
+                    'LogID': row[0],
+                    'UserID': row[1],
+                    'UserName': row[2],
+                    'UserEmail': row[3],
+                    'Action': row[4],
+                    'Date': row[5],
+                    'Time': row[6]
+                })
+        
+        # Sort by date and time descending
+        logs.sort(key=lambda x: (x['Date'], x['Time']), reverse=True)
+        return logs[:limit]
