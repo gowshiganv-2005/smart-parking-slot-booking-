@@ -66,14 +66,11 @@ function switchTab(tab) {
 
 async function loadDashboard() {
     try {
-        const [statsRes, slotsRes, bookingsRes] = await Promise.all([
-            apiRequest('/api/admin/stats'),
-            apiRequest('/api/admin/slots'),
-            apiRequest('/api/admin/bookings')
-        ]);
+        const { ok, data } = await apiRequest('/api/admin/dashboard-data');
 
-        if (statsRes.ok) {
-            const s = statsRes.data.stats;
+        if (ok) {
+            // Render stats
+            const s = data.stats;
             document.getElementById('totalSlots').textContent = s.total_slots;
             document.getElementById('availableSlots').textContent = s.available_slots;
             document.getElementById('bookedSlots').textContent = s.booked_slots;
@@ -81,14 +78,12 @@ async function loadDashboard() {
             if (document.getElementById('parkedVehicles')) {
                 document.getElementById('parkedVehicles').textContent = s.parked_vehicles || 0;
             }
-        }
 
-        if (slotsRes.ok) {
-            renderDashSlotMap(slotsRes.data.slots);
-        }
+            // Render slots
+            renderDashSlotMap(data.slots);
 
-        if (bookingsRes.ok) {
-            const allBookings = bookingsRes.data.bookings;
+            // Render bookings and vehicles
+            const allBookings = data.bookings;
             const activeVehicles = allBookings.filter(b => b.UserStatus === 'Logged In');
 
             // Render active vehicles

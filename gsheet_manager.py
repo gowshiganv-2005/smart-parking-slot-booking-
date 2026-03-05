@@ -21,7 +21,10 @@ SCOPES = [
 
 # Cache for frequently accessed data to avoid 429 Quota Errors
 _cache = {}
-_cache_expiry = 30 # seconds
+_cache_expiry = 60 # seconds
+
+_gc = None
+_sh = None
 
 def _get_cached_data(key, fetch_func):
     """Get data from cache if not expired, otherwise fetch new data."""
@@ -321,21 +324,47 @@ def get_user_bookings(user_id):
 
 def get_dashboard_stats():
     """Get stats for admin panel."""
-    users = get_all_users()
-    slots = get_all_slots()
-    bookings = get_all_bookings()
-    
-    available = len([s for s in slots if s['Status'] == 'Available'])
-    parked = len([b for b in bookings if b['UserStatus'] == 'Logged In'])
-    
-    return {
-        'total_users': len(users),
-        'total_slots': len(slots),
-        'available_slots': available,
-        'booked_slots': len(slots) - available,
-        'total_bookings': len(bookings),
-        'parked_vehicles': parked
-    }
+    def fetch():
+        users = get_all_users()
+        slots = get_all_slots()
+        bookings = get_all_bookings()
+        
+        available = len([s for s in slots if s['Status'] == 'Available'])
+        parked = len([b for b in bookings if b['UserStatus'] == 'Logged In'])
+        
+        return {
+            'total_users': len(users),
+            'total_slots': len(slots),
+            'available_slots': available,
+            'booked_slots': len(slots) - available,
+            'total_bookings': len(bookings),
+            'parked_vehicles': parked
+        }
+    return _get_cached_data('dashboard_stats', fetch)
+
+def get_full_dashboard_data():
+    """Get all data needed for admin dashboard in one go."""
+    def fetch():
+        users = get_all_users()
+        slots = get_all_slots()
+        bookings = get_all_bookings()
+        
+        available = len([s for s in slots if s['Status'] == 'Available'])
+        parked = len([b for b in bookings if b['UserStatus'] == 'Logged In'])
+        
+        return {
+            'stats': {
+                'total_users': len(users),
+                'total_slots': len(slots),
+                'available_slots': available,
+                'booked_slots': len(slots) - available,
+                'total_bookings': len(bookings),
+                'parked_vehicles': parked
+            },
+            'slots': slots,
+            'bookings': bookings
+        }
+    return _get_cached_data('full_dashboard', fetch)
 
 def log_activity(user_id, name, email, action):
     """Log an activity."""

@@ -309,6 +309,13 @@ def api_admin_stats():
     return jsonify({'success': True, 'stats': stats})
 
 
+@app.route('/api/admin/dashboard-data')
+@admin_required
+def api_admin_dashboard_data():
+    data = db.get_full_dashboard_data()
+    return jsonify({'success': True, **data})
+
+
 @app.route('/api/admin/slots')
 @admin_required
 def api_admin_slots():
