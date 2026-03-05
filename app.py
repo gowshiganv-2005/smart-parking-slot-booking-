@@ -109,6 +109,7 @@ def api_register():
     name = data.get('name', '').strip()
     email = data.get('email', '').strip()
     password = data.get('password', '').strip()
+    role = data.get('role', 'User').strip()
 
     if not all([name, email, password]):
         return jsonify({'success': False, 'message': 'All fields are required'}), 400
@@ -116,15 +117,19 @@ def api_register():
     if len(password) < 6:
         return jsonify({'success': False, 'message': 'Password must be at least 6 characters'}), 400
 
+    # Validate role
+    if role not in ['User', 'Admin']:
+        role = 'User'
+
     hashed = generate_password_hash(password)
-    user = db.register_user(name, email, hashed, data.get('phone', ''))
+    user = db.register_user(name, email, hashed, data.get('phone', ''), role)
 
     if not user:
         print(f"[AUTH] Registration failed: Email {email} already exists")
         return jsonify({'success': False, 'message': 'Email already registered'}), 409
 
-    db.log_activity(user['UserID'], user['Name'], user['Email'], 'Account Created')
-    print(f"[AUTH] User registered: {email}")
+    db.log_activity(user['UserID'], user['Name'], user['Email'], f'Account Created ({role})')
+    print(f"[AUTH] User registered: {email} as {role}")
     return jsonify({'success': True, 'message': 'Registration successful! Please login.'})
 
 
@@ -151,10 +156,17 @@ def api_login():
     session['user_id'] = user['UserID']
     session['user_name'] = user['Name']
     session['user_email'] = user['Email']
+    
+    user_role = user.get('Role', 'User')
+    session['user_role'] = user_role
+    
+    # If user registered as Admin, set admin session too
+    if user_role == 'Admin':
+        session['is_admin'] = True
 
     db.log_activity(user['UserID'], user['Name'], user['Email'], 'Login')
-    print(f"[AUTH] User logged in: {email}")
-    return jsonify({'success': True, 'message': 'Login successful'})
+    print(f"[AUTH] User logged in: {email} (Role: {user_role})")
+    return jsonify({'success': True, 'message': 'Login successful', 'role': user_role.lower()})
 
 
 @app.route('/api/admin/login', methods=['POST'])

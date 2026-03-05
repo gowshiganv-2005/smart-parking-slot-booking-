@@ -83,11 +83,12 @@ async function handleRegister() {
     const name = document.getElementById('name').value.trim();
     const email = document.getElementById('email').value.trim();
     const phone = document.getElementById('phone').value.trim();
+    const role = document.getElementById('role').value;
     const password = document.getElementById('password').value.trim();
     const confirmPassword = document.getElementById('confirmPassword').value.trim();
     const btn = document.getElementById('registerBtn');
 
-    if (!name || !email || !phone || !password || !confirmPassword) {
+    if (!name || !email || !phone || !role || !password || !confirmPassword) {
         showAlert('Please fill in all fields');
         return;
     }
@@ -107,7 +108,7 @@ async function handleRegister() {
     btn.innerHTML = '<span class="spinner"></span> Creating Account...';
 
     try {
-        const { ok, data } = await apiRequest('/api/register', 'POST', { name, email, phone, password });
+        const { ok, data } = await apiRequest('/api/register', 'POST', { name, email, phone, password, role });
 
         if (ok) {
             showAlert('Account created successfully! Redirecting to login...', 'success');

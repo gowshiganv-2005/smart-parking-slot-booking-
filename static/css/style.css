@@ -224,7 +224,8 @@ body {
     letter-spacing: 0.5px;
 }
 
-.form-group input {
+.form-group input,
+.form-group select {
     width: 100%;
     padding: 14px 16px;
     background: var(--bg-glass);
@@ -235,9 +236,12 @@ body {
     font-size: 15px;
     transition: var(--transition);
     outline: none;
+    appearance: none;
+    /* for select */
 }
 
-.form-group input:focus {
+.form-group input:focus,
+.form-group select:focus {
     border-color: var(--accent-purple);
     box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
     background: rgba(255, 255, 255, 0.08);
@@ -245,6 +249,12 @@ body {
 
 .form-group input::placeholder {
     color: var(--text-muted);
+}
+
+.form-group select option {
+    background: #1e1b4b;
+    /* dark theme fallback */
+    color: var(--text-primary);
 }
 
 /* ─── BUTTONS ────────────────────────────────────────────── */

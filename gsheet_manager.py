@@ -46,7 +46,7 @@ def init_gsheet():
     sh = _get_client()
     
     required_sheets = {
-        'Users': ['UserID', 'Name', 'Email', 'Password', 'Phone', 'LastActive'],
+        'Users': ['UserID', 'Name', 'Email', 'Password', 'Phone', 'Role', 'LastActive'],
         'ParkingSlots': ['SlotID', 'SlotNumber', 'Status'],
         'Bookings': ['BookingID', 'UserID', 'SlotID', 'SlotNumber', 'Date', 'Time', 'UserName', 'UserEmail', 'UserStatus', 'LoginTime', 'LogoutTime'],
         'ActivityLogs': ['LogID', 'UserID', 'UserName', 'UserEmail', 'Action', 'Date', 'Time']
@@ -95,7 +95,7 @@ def get_user_by_id(user_id):
             return row
     return None
 
-def register_user(name, email, password_hash, phone):
+def register_user(name, email, password_hash, phone, role='User'):
     """Register a new user."""
     if get_user_by_email(email):
         return None
@@ -103,7 +103,7 @@ def register_user(name, email, password_hash, phone):
     sh = _get_client()
     ws = sh.worksheet('Users')
     user_id = int(time.time() * 1000)
-    new_user = [user_id, name, email, password_hash, phone, 'N/A']
+    new_user = [user_id, name, email, password_hash, phone, role, 'N/A']
     
     with sheet_lock:
         ws.append_row(new_user)
@@ -113,6 +113,7 @@ def register_user(name, email, password_hash, phone):
         'Name': name,
         'Email': email,
         'Phone': phone,
+        'Role': role,
         'LastActive': 'N/A'
     }
 
@@ -133,7 +134,7 @@ def update_user_activity(user_id):
             now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             with sheet_lock:
                 # Row index is i + 2 because of header and 1-based indexing
-                ws.update_cell(i + 2, 6, now)
+                ws.update_cell(i + 2, 7, now)
             return True
     return False
 
