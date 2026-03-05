@@ -34,6 +34,8 @@ def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if 'user_id' not in session:
+            if request.path.startswith('/api/'):
+                return jsonify({'success': False, 'message': 'Unauthorized. Please login.'}), 401
             return redirect(url_for('login_page'))
         return f(*args, **kwargs)
     return decorated
@@ -43,6 +45,8 @@ def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if not session.get('is_admin'):
+            if request.path.startswith('/api/'):
+                return jsonify({'success': False, 'message': 'Admin access required.'}), 403
             return redirect(url_for('admin_login_page'))
         return f(*args, **kwargs)
     return decorated

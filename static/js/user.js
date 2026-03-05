@@ -13,14 +13,32 @@ let refreshInterval = null;
 // ─── UTILITY FUNCTIONS ──────────────────────────────────────
 
 async function apiRequest(url, method = 'GET', body = null) {
-    const options = {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-    };
-    if (body) options.body = JSON.stringify(body);
-    const response = await fetch(url, options);
-    const data = await response.json();
-    return { ok: response.ok, data };
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+    try {
+        const options = {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
+        };
+        if (body) options.body = JSON.stringify(body);
+
+        const response = await fetch(url, options);
+        clearTimeout(timeoutId);
+        const data = await response.json();
+        return { ok: response.ok, data };
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            console.error('Request timed out:', url);
+            showToast('Request timed out. Server or Google Sheets may be slow.', 'error');
+        } else {
+            console.error('API Request Error:', error);
+            showToast('Dashboard fetching issue. Check connection.', 'error');
+        }
+        return { ok: false, data: { message: error.message } };
+    }
 }
 
 function showToast(message, type = 'success') {
