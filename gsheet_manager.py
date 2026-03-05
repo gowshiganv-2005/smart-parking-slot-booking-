@@ -47,9 +47,26 @@ def _get_client():
             info = json.loads(config.GSHEET_CREDENTIALS_JSON)
             credentials = Credentials.from_service_account_info(info, scopes=SCOPES)
         else:
-            # Fallback to local file
-            credentials = Credentials.from_service_account_file(
+            # Fallback to local file - check multiple possible paths
+            possible_paths = [
                 config.GSHEET_CREDENTIALS_FILE,
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), config.GSHEET_CREDENTIALS_FILE),
+                os.path.join(os.getcwd(), config.GSHEET_CREDENTIALS_FILE)
+            ]
+            
+            found_path = None
+            for path in possible_paths:
+                if os.path.exists(path):
+                    found_path = path
+                    break
+            
+            if not found_path:
+                msg = f"Credentials file not found in any of: {possible_paths}. Please set GSHEET_CREDENTIALS_JSON environment variable."
+                print(f"[ERROR] {msg}")
+                raise FileNotFoundError(msg)
+                
+            credentials = Credentials.from_service_account_file(
+                found_path,
                 scopes=SCOPES
             )
         _gc = gspread.authorize(credentials)
