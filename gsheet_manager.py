@@ -6,6 +6,7 @@ Handles all CRUD operations using Google Sheets as the primary database.
 import gspread
 from google.oauth2.service_account import Credentials
 import config
+import os
 from datetime import datetime
 import threading
 import time
