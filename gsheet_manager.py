@@ -160,11 +160,45 @@ def register_user(name, email, password_hash, phone, role='User'):
     }
 
 def get_all_users():
-    """Get all registered users."""
+    """Get all registered users with data cleaning for shifted rows."""
     def fetch():
         sh = _get_client()
-        return sh.worksheet('Users').get_all_records()
+        records = sh.worksheet('Users').get_all_records()
+        clean_records = []
+        for r in records:
+            # Check for data shift bug (UserID is missing or shifted)
+            if not r.get('UserID') or r.get('UserID') == '#':
+                # Attempt to recover by looking at other fields (Name might contain ID)
+                if str(r.get('Name', '')).isnumeric() and len(str(r.get('Name', ''))) > 10:
+                    r['UserID'] = r['Name']
+                    r['Name'] = r.get('Email', 'Unknown')
+                    r['Email'] = r.get('Password', 'Unknown')
+                    r['Phone'] = r.get('Role', 'N/A')
+                    r['Role'] = r.get('LastActive', 'User')
+            
+            # Filter out rows that are clearly empty or just placeholders
+            if r.get('UserID') and str(r.get('UserID')).strip() != '' and str(r.get('UserID')) != '#':
+                clean_records.append(r)
+        return clean_records
     return _get_cached_data('users', fetch)
+
+def delete_user(user_id):
+    """Delete a user account."""
+    sh = _get_client()
+    ws = sh.worksheet('Users')
+    records = ws.get_all_records()
+    
+    for i, row in enumerate(records):
+        # We need to find the correct row even if data is shifted in the record list
+        # We'll use the record list to find the index
+        if str(row['UserID']) == str(user_id) or (not row['UserID'] and str(row['Name']) == str(user_id)):
+            with sheet_lock:
+                # Row index is i + 2 because of header and 1-based indexing
+                ws.delete_rows(i + 2)
+                # Clear cache
+                if 'users' in _cache: del _cache['users']
+            return True
+    return False
 
 def update_user_activity(user_id):
     """Update user's last active timestamp."""

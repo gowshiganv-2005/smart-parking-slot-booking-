@@ -52,6 +52,17 @@ def admin_required(f):
     return decorated
 
 
+def super_admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if session.get('user_role') != 'SuperAdmin':
+            if request.path.startswith('/api/'):
+                return jsonify({'success': False, 'message': 'Super Administrator access required.'}), 403
+            return redirect(url_for('admin_login_page'))
+        return f(*args, **kwargs)
+    return decorated
+
+
 # ─── PAGE ROUTES ─────────────────────────────────────────────────
 
 @app.route('/')
@@ -146,13 +157,20 @@ def api_login():
         # First check: Is this the master admin username/password?
         if email == config.ADMIN_USERNAME and password == config.ADMIN_PASSWORD:
             session['is_admin'] = True
-            session['user_name'] = 'Admin'
+            session['user_role'] = 'SuperAdmin'
+            session['user_name'] = 'System Administrator'
             session['user_email'] = config.ADMIN_EMAIL
+            session['user_id'] = 0
             # Log activity in background to not block the response
             import threading
             threading.Thread(target=db.log_activity, args=(0, 'Admin', config.ADMIN_EMAIL, 'Admin Login'), daemon=True).start()
             print(f"[AUTH] Master Admin logged in via unified login")
-            return jsonify({'success': True, 'message': 'Admin login successful', 'role': 'admin'})
+            return jsonify({
+                'success': True, 
+                'message': 'Super Admin login successful', 
+                'role': 'superadmin',
+                'is_super_admin': True
+            })
 
         # Second check: Email-based user lookup
         user = db.get_user_by_email(email)
@@ -171,15 +189,25 @@ def api_login():
         user_role = user.get('Role', 'User')
         session['user_role'] = user_role
         
-        # If user registered as Admin, set admin session too
-        if user_role == 'Admin':
+        if email == config.ADMIN_EMAIL:
+            session['user_role'] = 'SuperAdmin'
             session['is_admin'] = True
+        elif user_role == 'Admin':
+            session['user_role'] = 'Admin'
+            session['is_admin'] = True
+        else:
+            session['user_role'] = 'User'
 
         # Log activity in background to not block the response
         import threading
         threading.Thread(target=db.log_activity, args=(user['UserID'], user['Name'], user['Email'], 'Login'), daemon=True).start()
-        print(f"[AUTH] User logged in: {email} (Role: {user_role})")
-        return jsonify({'success': True, 'message': 'Login successful', 'role': user_role.lower()})
+        print(f"[AUTH] {session['user_role']} logged in: {email}")
+        return jsonify({
+            'success': True, 
+            'message': 'Login successful', 
+            'role': session['user_role'].lower(),
+            'is_super_admin': session['user_role'] == 'SuperAdmin'
+        })
     except Exception as e:
         print(f"[ERROR] Login error: {e}")
         import traceback
@@ -341,17 +369,41 @@ def api_admin_bookings():
 
 
 @app.route('/api/admin/users')
-@admin_required
+@super_admin_required
 def api_admin_users():
     users = db.get_all_users()
     return jsonify({'success': True, 'users': users})
 
 
+@app.route('/api/admin/users/delete', methods=['POST'])
+@super_admin_required
+def api_admin_delete_user():
+    data = request.get_json()
+    user_id = data.get('user_id')
+    
+    if not user_id:
+        return jsonify({'success': False, 'message': 'User ID is required'}), 400
+        
+    if db.delete_user(user_id):
+        return jsonify({'success': True, 'message': 'User deleted successfully'})
+    return jsonify({'success': False, 'message': 'User not found'}), 404
+
+
 @app.route('/api/admin/logs')
-@admin_required
+@super_admin_required
 def api_admin_logs():
     logs = db.get_all_logs()
     return jsonify({'success': True, 'logs': logs})
+
+
+@app.route('/api/user/delete-self', methods=['POST'])
+@login_required
+def api_user_delete_self():
+    user_id = session['user_id']
+    if db.delete_user(user_id):
+        session.clear()
+        return jsonify({'success': True, 'message': 'Account deleted successfully'})
+    return jsonify({'success': False, 'message': 'Failed to delete account'}), 400
 
 
 @app.route('/api/admin/slots/add', methods=['POST'])

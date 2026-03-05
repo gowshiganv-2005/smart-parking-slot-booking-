@@ -375,6 +375,18 @@ async function handleLogout() {
     }
 }
 
+async function deleteAccount() {
+    if (!confirm('Are you sure you want to delete your account? This action is permanent and will cancel all your bookings.')) return;
+
+    const { ok, data } = await apiRequest('/api/user/delete-self', 'POST');
+    if (ok) {
+        alert('Account deleted successfully. You will be logged out.');
+        window.location.href = '/login';
+    } else {
+        showToast(data.message || 'Failed to delete account', 'error');
+    }
+}
+
 
 // ─── REAL-TIME UPDATES ──────────────────────────────────────
 

@@ -61,14 +61,19 @@ function toggleSidebar() {
 }
 
 
-// ─── TAB NAVIGATION ─────────────────────────────────────────
+const isSuperAdmin = localStorage.getItem('isSuperAdmin') === 'true';
 
-function switchTab(tab) {
+function switchTab(tabId) {
+    if (!isSuperAdmin && ['users', 'logs', 'slots'].includes(tabId)) {
+        showToast('Access denied: Requires Super Admin', 'error');
+        return;
+    }
+
     document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-    document.getElementById(`nav-${tab}`).classList.add('active');
+    document.getElementById(`nav-${tabId}`).classList.add('active');
 
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-    document.getElementById(`tab-${tab}`).classList.add('active');
+    document.getElementById(`tab-${tabId}`).classList.add('active');
 
     document.getElementById('sidebar').classList.remove('open');
 
@@ -527,6 +532,7 @@ function renderUsersTable(users) {
                     <th>Email</th>
                     <th>Phone</th>
                     <th>Last Active</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -540,6 +546,13 @@ function renderUsersTable(users) {
                             <span style="font-size: 11px; color: ${u.LastActive && u.LastActive !== 'N/A' ? 'var(--accent-green)' : 'var(--text-muted)'};">
                                 ${u.LastActive || 'N/A'}
                             </span>
+                        </td>
+                        <td>
+                            ${u.UserID !== '0' ? `
+                                <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.UserID}')" title="Delete User">
+                                    🗑️
+                                </button>
+                            ` : '<span class="badge badge-available">System</span>'}
                         </td>
                     </tr>
                 `).join('')}
@@ -814,6 +827,30 @@ document.addEventListener('keydown', function (e) {
 // ─── INITIALIZATION ─────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Hide SuperAdmin tabs for regular admins
+    if (!isSuperAdmin) {
+        if (document.getElementById('nav-users')) document.getElementById('nav-users').style.display = 'none';
+        if (document.getElementById('nav-logs')) document.getElementById('nav-logs').style.display = 'none';
+        if (document.getElementById('nav-slots')) document.getElementById('nav-slots').style.display = 'none';
+    }
+
     loadDashboard();
-    startAutoRefresh();
+
+    // Auto-refresh every 60 seconds
+    setInterval(() => {
+        const activeTab = document.querySelector('.tab-content.active');
+        if (activeTab && activeTab.id === 'tab-overview') loadDashboard();
+    }, 60000);
 });
+
+async function deleteUser(userId) {
+    if (!confirm('Are you sure you want to delete this user? This will also remove their bookings.')) return;
+
+    const { ok, data } = await apiRequest('/api/admin/users/delete', 'POST', { user_id: userId });
+    if (ok) {
+        showToast('User deleted successfully', 'success');
+        loadUsers();
+    } else {
+        showToast(data.message || 'Failed to delete user', 'error');
+    }
+}

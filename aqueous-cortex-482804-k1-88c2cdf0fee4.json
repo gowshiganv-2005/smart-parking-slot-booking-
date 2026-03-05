@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "aqueous-cortex-482804-k1",
+  "private_key_id": "88c2cdf0fee4b09552387d16d8dfc9f0e833e265",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCnLh5ZK7ERln3I\nJwdWkD2ZMStNIvVlYdSwDFNN3cx/SiZipWJsFj92cpfDkoWNRuPZag/WsptrEEIb\nh8j/GGzW6nIQXm4adkwn3LRKo1Bsn8Yk3EiFtWJIZDxIB4yF0prx2pOhWCiLE07A\nWp5jIbrLiSo9PxFYnEkjlUWexrwqO3gxP2itvjyrnLx431etzW0mw4mW+1iu/tFS\nAfjGnLyM+s9zC21MqoeaM1/WvUJQwH01dY/pZwiDepvXjoZfy3yNYHJakzXMXMSQ\nCTNwhAwcV1KoNXayEpfPfK9wNp2iFgZVvrbSozRBPVK21d2/DKcD8wD5Kw2TvtKy\nt32KujP1AgMBAAECggEASnYqIkFpnpHO+EUZ6Z5ZMVBLHxJBBqTqXHdA61+s480d\nB7bt/YJzRciIfB1YyrIWbhHleBUZUDhvmV+DUMuKPrcxksTceYDTLrYIv226Nod7\nc5OB4bwGSIQMrXBfUIOba7mVI7nmZPt2igpSnYi6cElpvNnIWhVSJj0oQy31RUF7\nW/S58gGcHmEcqpmFafffTM0sF7RMbSWhtPi0nIPKHE4x/op7N1HgtoowLKGcROFu\nEnszBPKw9APU2yHOybfbEz1pchrg2LpWy1VlQcfOyEz5tzxIg45LwyR/NESIVoZ+\nF25nbdNeYoB1xJWFX4XELycZe3rHR1WUmbMVfcLvSQKBgQDRdrt/O0+fNm/5eXCG\n6firAO/wQljdTj5+z3YroR+1WSPR+EMxnbrHurM05aGh5aVgnhXzK5wqocent2Rd\n+uGKhHAftzuTfJ/00xlV8PChdQkcazO9PXjiS7FPQ4c3EyS7dXI95WuENjipJdAq\nJS/LEhN/GeKe9dkhgvOtp2xKswKBgQDMUoA2NtoMS2+QOKXE3A9411RsnOErby+2\nhOkRCLgHLyLm2KLJbYlv2crLlfh8UPS+J8VwFSU8J4Ca/sMghdTNb7Ps+p6p6Ox4\n+CI31n76LzogzWFtHyednMT87NLKoj9A5Xx9czNV+ZfklI3ZcZkNFaTY3eUcztyx\nzorCvir6twKBgFbZ6miZCSy0/7zrk7L9NLSDEPoIKJyqotMl5pO0nVcufOHFFOdv\nxVCno0LdrCVa+TWUlvlbLceniQeLzTwCmJ48x9j+ut8un4x+M1UlMEFiK8Ly2GMx\nJ/x88ioxj9FQSLzJt/LeO7R4XwoTubqf7K9A8YCUFRlgSwXQLIXmk8ptAoGARw0x\ndKjiboAVDawFSU3VO4p120c6riX+C5Rwj/HePPFRS8Ft6mni7zhnYyCFxoVIdo/S\nAsX3qtF50WxiYn7nn4EGqpQEdMWA5hgzngNDKLEfn6SMCqxY1GBdyC56puiA4opr\nHhzfbzhab6yRH1p3hKtQJfIT6E6vRE20xz/mJkUCgYEAh9+H8z+50MC0V7zFI1Dz\n8xeBWiVJifnfpGW6DEW6I14nu2hTGrc5I4v1qiUYYIL7cW7G2VGLRnv4groSJ5To\nbtoGoB6BHEwZ6YvvbPnOHZqOd2OlpRm39d/B6L+lX1KMp/Oy8smV4VV0SvdkoyF1\n7zFdqo6R27xVRQbAXlZrSMg=\n-----END PRIVATE KEY-----\n",
+  "client_email": "parking-system-bot@aqueous-cortex-482804-k1.iam.gserviceaccount.com",
+  "client_id": "100646191243145812850",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/parking-system-bot%40aqueous-cortex-482804-k1.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

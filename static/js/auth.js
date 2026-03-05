@@ -69,8 +69,12 @@ async function handleLogin() {
 
         if (ok) {
             showAlert('Login successful! Redirecting...', 'success');
+            // Store role and superadmin status for UI filtering
+            localStorage.setItem('userRole', data.role);
+            localStorage.setItem('isSuperAdmin', data.is_super_admin || false);
+
             setTimeout(() => {
-                if (data.role === 'admin') {
+                if (data.role === 'admin' || data.role === 'superadmin') {
                     window.location.href = '/admin/dashboard';
                 } else {
                     window.location.href = '/dashboard';
