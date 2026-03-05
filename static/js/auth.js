@@ -69,6 +69,7 @@ async function handleLogin() {
             btn.textContent = 'Sign In';
         }
     } catch (error) {
+        console.error('Login error:', error);
         showAlert('Network error. Please try again.');
         btn.disabled = false;
         btn.textContent = 'Sign In';
@@ -119,6 +120,7 @@ async function handleRegister() {
             btn.textContent = 'Create Account';
         }
     } catch (error) {
+        console.error('Registration error:', error);
         showAlert('Network error. Please try again.');
         btn.disabled = false;
         btn.textContent = 'Create Account';

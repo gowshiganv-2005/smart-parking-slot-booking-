@@ -6,7 +6,13 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import json
+import os
+from dotenv import load_dotenv
 import config
+
+# Load environment variables from .env file
+load_dotenv()
+
 import gsheet_manager as db
 import email_service
 import qr_generator
@@ -127,6 +133,8 @@ def api_login():
     data = request.get_json()
     email = data.get('email', '').strip()
     password = data.get('password', '').strip()
+    
+    print(f"[DEBUG] Login attempt for: {email}")
 
     if not all([email, password]):
         return jsonify({'success': False, 'message': 'Email and password are required'}), 400
@@ -513,4 +521,4 @@ def api_admin_verify_booking():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5000)
