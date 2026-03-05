@@ -19,8 +19,20 @@ SCOPES = [
     'https://www.googleapis.com/auth/drive'
 ]
 
-_gc = None
-_sh = None
+# Cache for frequently accessed data to avoid 429 Quota Errors
+_cache = {}
+_cache_expiry = 30 # seconds
+
+def _get_cached_data(key, fetch_func):
+    """Get data from cache if not expired, otherwise fetch new data."""
+    now = time.time()
+    if key in _cache and (now - _cache[key]['time']) < _cache_expiry:
+        return _cache[key]['data']
+    
+    data = fetch_func()
+    # If the fetch fails with APIError, it will bubbled up but won't cache
+    _cache[key] = {'time': now, 'data': data}
+    return data
 
 def _get_client():
     """Get the gspread client, initializing if necessary."""
@@ -38,7 +50,11 @@ def _get_client():
                 scopes=SCOPES
             )
         _gc = gspread.authorize(credentials)
-        _sh = _gc.open_by_key(config.GSHEET_ID)
+        try:
+            _sh = _gc.open_by_key(config.GSHEET_ID)
+        except Exception as e:
+            print(f"[ERROR] Could not open Google Sheet {config.GSHEET_ID}: {e}")
+            raise e
     return _sh
 
 def init_gsheet():
@@ -77,19 +93,23 @@ def init_gsheet():
 
 def get_user_by_email(email):
     """Get user details by email."""
-    sh = _get_client()
-    ws = sh.worksheet('Users')
-    records = ws.get_all_records()
+    def fetch():
+        sh = _get_client()
+        return sh.worksheet('Users').get_all_records()
+    
+    records = _get_cached_data('users', fetch)
     for row in records:
-        if row['Email'].lower() == email.lower():
+        if str(row['Email']).lower() == str(email).lower():
             return row
     return None
 
 def get_user_by_id(user_id):
     """Get user details by ID."""
-    sh = _get_client()
-    ws = sh.worksheet('Users')
-    records = ws.get_all_records()
+    def fetch():
+        sh = _get_client()
+        return sh.worksheet('Users').get_all_records()
+    
+    records = _get_cached_data('users', fetch)
     for row in records:
         if str(row['UserID']) == str(user_id):
             return row
@@ -107,6 +127,8 @@ def register_user(name, email, password_hash, phone, role='User'):
     
     with sheet_lock:
         ws.append_row(new_user)
+        # Clear cache after write
+        if 'users' in _cache: del _cache['users']
         
     return {
         'UserID': user_id,
@@ -119,9 +141,10 @@ def register_user(name, email, password_hash, phone, role='User'):
 
 def get_all_users():
     """Get all registered users."""
-    sh = _get_client()
-    ws = sh.worksheet('Users')
-    return ws.get_all_records()
+    def fetch():
+        sh = _get_client()
+        return sh.worksheet('Users').get_all_records()
+    return _get_cached_data('users', fetch)
 
 def update_user_activity(user_id):
     """Update user's last active timestamp."""
@@ -142,9 +165,10 @@ def update_user_activity(user_id):
 
 def get_all_slots():
     """Get all parking slots."""
-    sh = _get_client()
-    ws = sh.worksheet('ParkingSlots')
-    return ws.get_all_records()
+    def fetch():
+        sh = _get_client()
+        return sh.worksheet('ParkingSlots').get_all_records()
+    return _get_cached_data('slots', fetch)
 
 def add_slot(slot_number):
     """Add a new parking slot."""
@@ -154,6 +178,7 @@ def add_slot(slot_number):
     
     with sheet_lock:
         ws.append_row([slot_id, slot_number, "Available"])
+        if 'slots' in _cache: del _cache['slots']
     return True
 
 def delete_slot(slot_id):
@@ -166,6 +191,7 @@ def delete_slot(slot_id):
         if str(row['SlotID']) == str(slot_id):
             with sheet_lock:
                 ws.delete_rows(i + 2)
+                if 'slots' in _cache: del _cache['slots']
             return True
     return False
 
@@ -179,6 +205,7 @@ def update_slot_status(slot_id, status):
         if str(row['SlotID']) == str(slot_id):
             with sheet_lock:
                 ws.update_cell(i + 2, 3, status)
+                if 'slots' in _cache: del _cache['slots']
             return True
     return False
 
@@ -256,6 +283,7 @@ def update_booking_access_status(booking_id, status, time_str=None):
                     ws.update_cell(i + 2, 10, time_str) # LoginTime
                 elif status == 'Logged Out' and time_str:
                     ws.update_cell(i + 2, 11, time_str) # LogoutTime
+                if 'bookings' in _cache: del _cache['bookings']
             return True
     return False
 
@@ -273,20 +301,20 @@ def cancel_booking(booking_id):
                 update_slot_status(slot_id, 'Available')
                 # Delete booking
                 ws_bookings.delete_rows(i + 2)
+                if 'bookings' in _cache: del _cache['bookings']
             return True
     return False
 
 def get_all_bookings():
     """Get all bookings."""
-    sh = _get_client()
-    ws = sh.worksheet('Bookings')
-    return ws.get_all_records()
+    def fetch():
+        sh = _get_client()
+        return sh.worksheet('Bookings').get_all_records()
+    return _get_cached_data('bookings', fetch)
 
 def get_user_bookings(user_id):
     """Get bookings for a specific user."""
-    sh = _get_client()
-    ws = sh.worksheet('Bookings')
-    records = ws.get_all_records()
+    records = get_all_bookings()
     return [r for r in records if str(r['UserID']) == str(user_id)]
 
 # ─── STATS & LOGS ──────────────────────────────────────────────
