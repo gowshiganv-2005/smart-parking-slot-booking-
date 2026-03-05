@@ -26,10 +26,17 @@ def _get_client():
     """Get the gspread client, initializing if necessary."""
     global _gc, _sh
     if _gc is None:
-        credentials = Credentials.from_service_account_file(
-            config.GSHEET_CREDENTIALS_FILE,
-            scopes=SCOPES
-        )
+        # Check if credential JSON is provided in Environment Variables first
+        if config.GSHEET_CREDENTIALS_JSON:
+            import json
+            info = json.loads(config.GSHEET_CREDENTIALS_JSON)
+            credentials = Credentials.from_service_account_info(info, scopes=SCOPES)
+        else:
+            # Fallback to local file
+            credentials = Credentials.from_service_account_file(
+                config.GSHEET_CREDENTIALS_FILE,
+                scopes=SCOPES
+            )
         _gc = gspread.authorize(credentials)
         _sh = _gc.open_by_key(config.GSHEET_ID)
     return _sh
