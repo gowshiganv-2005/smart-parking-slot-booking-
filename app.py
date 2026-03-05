@@ -144,6 +144,16 @@ def api_login():
     if not all([email, password]):
         return jsonify({'success': False, 'message': 'Email and password are required'}), 400
 
+    # First check: Is this the master admin username/password?
+    if email == config.ADMIN_USERNAME and password == config.ADMIN_PASSWORD:
+        session['is_admin'] = True
+        session['user_name'] = 'Admin'
+        session['user_email'] = config.ADMIN_EMAIL
+        db.log_activity(0, 'Admin', config.ADMIN_EMAIL, 'Admin Login')
+        print(f"[AUTH] Master Admin logged in via unified login")
+        return jsonify({'success': True, 'message': 'Admin login successful', 'role': 'admin'})
+
+    # Second check: Email-based user lookup
     user = db.get_user_by_email(email)
     if not user:
         print(f"[AUTH] Login failed: User {email} not found")
