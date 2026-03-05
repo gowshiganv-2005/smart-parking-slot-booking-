@@ -23,15 +23,28 @@ function hideAlert() {
 }
 
 async function apiRequest(url, method = 'GET', body = null) {
-    const options = {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-    };
-    if (body) options.body = JSON.stringify(body);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-    const response = await fetch(url, options);
-    const data = await response.json();
-    return { ok: response.ok, data };
+    try {
+        const options = {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
+        };
+        if (body) options.body = JSON.stringify(body);
+
+        const response = await fetch(url, options);
+        clearTimeout(timeoutId);
+        const data = await response.json();
+        return { ok: response.ok, data };
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            throw new Error('Request timed out. Server may be busy, please try again.');
+        }
+        throw error;
+    }
 }
 
 
@@ -70,7 +83,7 @@ async function handleLogin() {
         }
     } catch (error) {
         console.error('Login error:', error);
-        showAlert('Network error. Please try again.');
+        showAlert(error.message || 'Network error. Please try again.');
         btn.disabled = false;
         btn.textContent = 'Sign In';
     }
@@ -122,7 +135,7 @@ async function handleRegister() {
         }
     } catch (error) {
         console.error('Registration error:', error);
-        showAlert('Network error. Please try again.');
+        showAlert(error.message || 'Network error. Please try again.');
         btn.disabled = false;
         btn.textContent = 'Create Account';
     }
@@ -159,7 +172,8 @@ async function handleAdminLogin() {
             btn.textContent = 'Admin Sign In';
         }
     } catch (error) {
-        showAlert('Network error. Please try again.');
+        console.error('Admin login error:', error);
+        showAlert(error.message || 'Network error. Please try again.');
         btn.disabled = false;
         btn.textContent = 'Admin Sign In';
     }

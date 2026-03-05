@@ -55,12 +55,6 @@ def index():
     return redirect(url_for('login_page'))
 
 
-@app.before_request
-def track_activity():
-    if 'user_id' in session and not request.path.startswith('/static'):
-        db.update_user_activity(session['user_id'])
-
-
 @app.route('/login')
 def login_page():
     if 'user_id' in session:
@@ -135,48 +129,58 @@ def api_register():
 
 @app.route('/api/login', methods=['POST'])
 def api_login():
-    data = request.get_json()
-    email = data.get('email', '').strip()
-    password = data.get('password', '').strip()
-    
-    print(f"[DEBUG] Login attempt for: {email}")
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip()
+        password = data.get('password', '').strip()
+        
+        print(f"[DEBUG] Login attempt for: {email}")
 
-    if not all([email, password]):
-        return jsonify({'success': False, 'message': 'Email and password are required'}), 400
+        if not all([email, password]):
+            return jsonify({'success': False, 'message': 'Email and password are required'}), 400
 
-    # First check: Is this the master admin username/password?
-    if email == config.ADMIN_USERNAME and password == config.ADMIN_PASSWORD:
-        session['is_admin'] = True
-        session['user_name'] = 'Admin'
-        session['user_email'] = config.ADMIN_EMAIL
-        db.log_activity(0, 'Admin', config.ADMIN_EMAIL, 'Admin Login')
-        print(f"[AUTH] Master Admin logged in via unified login")
-        return jsonify({'success': True, 'message': 'Admin login successful', 'role': 'admin'})
+        # First check: Is this the master admin username/password?
+        if email == config.ADMIN_USERNAME and password == config.ADMIN_PASSWORD:
+            session['is_admin'] = True
+            session['user_name'] = 'Admin'
+            session['user_email'] = config.ADMIN_EMAIL
+            # Log activity in background to not block the response
+            import threading
+            threading.Thread(target=db.log_activity, args=(0, 'Admin', config.ADMIN_EMAIL, 'Admin Login'), daemon=True).start()
+            print(f"[AUTH] Master Admin logged in via unified login")
+            return jsonify({'success': True, 'message': 'Admin login successful', 'role': 'admin'})
 
-    # Second check: Email-based user lookup
-    user = db.get_user_by_email(email)
-    if not user:
-        print(f"[AUTH] Login failed: User {email} not found")
-        return jsonify({'success': False, 'message': 'Invalid email or password'}), 401
-    
-    if not check_password_hash(user['Password'], password):
-        print(f"[AUTH] Login failed: Wrong password for {email}")
-        return jsonify({'success': False, 'message': 'Invalid email or password'}), 401
+        # Second check: Email-based user lookup
+        user = db.get_user_by_email(email)
+        if not user:
+            print(f"[AUTH] Login failed: User {email} not found")
+            return jsonify({'success': False, 'message': 'Invalid email or password'}), 401
+        
+        if not check_password_hash(user['Password'], password):
+            print(f"[AUTH] Login failed: Wrong password for {email}")
+            return jsonify({'success': False, 'message': 'Invalid email or password'}), 401
 
-    session['user_id'] = user['UserID']
-    session['user_name'] = user['Name']
-    session['user_email'] = user['Email']
-    
-    user_role = user.get('Role', 'User')
-    session['user_role'] = user_role
-    
-    # If user registered as Admin, set admin session too
-    if user_role == 'Admin':
-        session['is_admin'] = True
+        session['user_id'] = user['UserID']
+        session['user_name'] = user['Name']
+        session['user_email'] = user['Email']
+        
+        user_role = user.get('Role', 'User')
+        session['user_role'] = user_role
+        
+        # If user registered as Admin, set admin session too
+        if user_role == 'Admin':
+            session['is_admin'] = True
 
-    db.log_activity(user['UserID'], user['Name'], user['Email'], 'Login')
-    print(f"[AUTH] User logged in: {email} (Role: {user_role})")
-    return jsonify({'success': True, 'message': 'Login successful', 'role': user_role.lower()})
+        # Log activity in background to not block the response
+        import threading
+        threading.Thread(target=db.log_activity, args=(user['UserID'], user['Name'], user['Email'], 'Login'), daemon=True).start()
+        print(f"[AUTH] User logged in: {email} (Role: {user_role})")
+        return jsonify({'success': True, 'message': 'Login successful', 'role': user_role.lower()})
+    except Exception as e:
+        print(f"[ERROR] Login error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': 'Server error. Please try again.'}), 500
 
 
 @app.route('/api/admin/login', methods=['POST'])
