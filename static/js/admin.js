@@ -109,9 +109,23 @@ async function loadDashboard() {
 
             // Render recent bookings (last 5)
             renderRecentBookings(allBookings.slice(-5).reverse());
+        } else {
+            const errorMsg = data.error || data.message || 'Fetching issue';
+            showToast(`Dashboard Error: ${errorMsg}`, 'error');
+            console.error('Dashboard Fetch failed:', data);
+
+            // Auto-retry once after 3 seconds
+            setTimeout(() => {
+                const activeTab = document.querySelector('.tab-content.active');
+                if (activeTab && activeTab.id === 'tab-overview') {
+                    console.log('Auto-retrying dashboard fetch...');
+                    loadDashboard();
+                }
+            }, 3000);
         }
     } catch (e) {
         console.error('Failed to load dashboard', e);
+        showToast('Connection failed. Retrying...', 'info');
     }
 }
 

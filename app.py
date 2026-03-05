@@ -316,8 +316,14 @@ def api_admin_stats():
 @app.route('/api/admin/dashboard-data')
 @admin_required
 def api_admin_dashboard_data():
-    data = db.get_full_dashboard_data()
-    return jsonify({'success': True, **data})
+    try:
+        data = db.get_full_dashboard_data()
+        if 'error' in data:
+            return jsonify({'success': False, 'message': 'Google Sheets Error', 'error': data['error']}), 503
+        return jsonify({'success': True, **data})
+    except Exception as e:
+        print(f"[CRITICAL] Dashboard API Error: {e}")
+        return jsonify({'success': False, 'message': 'Internal Server Error', 'error': str(e)}), 500
 
 
 @app.route('/api/admin/slots')

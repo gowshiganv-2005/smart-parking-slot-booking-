@@ -343,28 +343,46 @@ def get_dashboard_stats():
     return _get_cached_data('dashboard_stats', fetch)
 
 def get_full_dashboard_data():
-    """Get all data needed for admin dashboard in one go."""
-    def fetch():
-        users = get_all_users()
-        slots = get_all_slots()
-        bookings = get_all_bookings()
-        
-        available = len([s for s in slots if s['Status'] == 'Available'])
-        parked = len([b for b in bookings if b['UserStatus'] == 'Logged In'])
-        
+    """Get all data needed for admin dashboard in one go using parallel fetching."""
+    from concurrent.futures import ThreadPoolExecutor
+    
+    def fetch_all():
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            future_users = executor.submit(get_all_users)
+            future_slots = executor.submit(get_all_slots)
+            future_bookings = executor.submit(get_all_bookings)
+            
+            users = future_users.result()
+            slots = future_slots.result()
+            bookings = future_bookings.result()
+            
+            available = len([s for s in slots if s['Status'] == 'Available'])
+            parked = len([b for b in bookings if b['UserStatus'] == 'Logged In'])
+            
+            return {
+                'stats': {
+                    'total_users': len(users),
+                    'total_slots': len(slots),
+                    'available_slots': available,
+                    'booked_slots': len(slots) - available,
+                    'total_bookings': len(bookings),
+                    'parked_vehicles': parked
+                },
+                'slots': slots,
+                'bookings': bookings
+            }
+            
+    try:
+        return _get_cached_data('full_dashboard', fetch_all)
+    except Exception as e:
+        print(f"[ERROR] Full dashboard fetch failed: {e}")
+        # Return empty data if fetch fails to avoid crashing
         return {
-            'stats': {
-                'total_users': len(users),
-                'total_slots': len(slots),
-                'available_slots': available,
-                'booked_slots': len(slots) - available,
-                'total_bookings': len(bookings),
-                'parked_vehicles': parked
-            },
-            'slots': slots,
-            'bookings': bookings
+            'stats': {'total_users': 0, 'total_slots': 0, 'available_slots': 0, 'booked_slots': 0, 'total_bookings': 0, 'parked_vehicles': 0},
+            'slots': [],
+            'bookings': [],
+            'error': str(e)
         }
-    return _get_cached_data('full_dashboard', fetch)
 
 def log_activity(user_id, name, email, action):
     """Log an activity."""
