@@ -130,6 +130,30 @@ def parking_access():
     return render_template('access_control.html', booking=booking)
 
 
+# ─── DIAGNOSTIC ROUTE ────────────────────────────────────────────
+
+@app.route('/api/debug/db')
+def api_debug_db():
+    try:
+        import gsheet_manager as gs
+        gs._get_client()
+        return jsonify({
+            'success': True,
+            'mode': 'Cloud (Persistent)',
+            'message': 'Google Sheets is connected and working!'
+        })
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'success': False,
+            'mode': 'Local (Temporary)',
+            'error_type': type(e).__name__,
+            'error_message': str(e),
+            'has_env_json': bool(config.GSHEET_CREDENTIALS_JSON),
+            'gsheet_id': config.GSHEET_ID
+        })
+
+
 # ─── AUTH API ROUTES ─────────────────────────────────────────────
 
 @app.route('/api/register', methods=['POST'])
