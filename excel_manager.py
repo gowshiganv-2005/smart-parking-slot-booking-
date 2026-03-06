@@ -24,10 +24,10 @@ def init_excel():
     # Sheet 1: Users
     ws_users = wb.active
     ws_users.title = 'Users'
-    ws_users.append(['UserID', 'Name', 'Email', 'Password', 'Phone', 'LastActive'])
+    ws_users.append(['UserID', 'Name', 'Email', 'Password', 'Phone', 'Role', 'LastActive'])
     # Add default users
-    ws_users.append([1, 'Test User', 'test@example.com', generate_password_hash('123456'), '1234567890', 'N/A'])
-    ws_users.append([2, 'Jeevan Samuel', 'jeevansamuvel12@gmail.com', generate_password_hash('123456'), '9876543210', 'N/A'])
+    ws_users.append([1, 'Test User', 'test@example.com', generate_password_hash('123456'), '1234567890', 'User', 'N/A'])
+    ws_users.append([2, 'Jeevan Samuel', 'jeevansamuvel12@gmail.com', generate_password_hash('123456'), '9876543210', 'User', 'N/A'])
 
     # Sheet 2: ParkingSlots
     ws_slots = wb.create_sheet('ParkingSlots')
@@ -75,7 +75,8 @@ def get_user_by_email(email):
                     'Email': row[2],
                     'Password': row[3],
                     'Phone': row[4] if len(row) > 4 else '',
-                    'LastActive': row[5] if len(row) > 5 else 'N/A'
+                    'Role': row[5] if len(row) > 5 else 'User',
+                    'LastActive': row[6] if len(row) > 6 else 'N/A'
                 }
         return None
 
@@ -93,12 +94,13 @@ def get_user_by_id(user_id):
                     'Email': row[2],
                     'Password': row[3],
                     'Phone': row[4] if len(row) > 4 else '',
-                    'LastActive': row[5] if len(row) > 5 else 'N/A'
+                    'Role': row[5] if len(row) > 5 else 'User',
+                    'LastActive': row[6] if len(row) > 6 else 'N/A'
                 }
         return None
 
 
-def register_user(name, email, password, phone):
+def register_user(name, email, password, phone, role='User'):
     """Register a new user. Returns the new user dict or None if email exists."""
     with excel_lock:
         wb = _load_workbook()
@@ -116,14 +118,15 @@ def register_user(name, email, password, phone):
                 max_id = max(max_id, row[0])
         new_id = max_id + 1
 
-        ws.append([new_id, name, email, password, phone, 'N/A'])
+        ws.append([new_id, name, email, password, phone, role, 'N/A'])
         _save_workbook(wb)
 
         return {
             'UserID': new_id,
             'Name': name,
             'Email': email,
-            'Phone': phone
+            'Phone': phone,
+            'Role': role
         }
 
 

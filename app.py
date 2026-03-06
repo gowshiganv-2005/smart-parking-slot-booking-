@@ -13,19 +13,39 @@ import config
 # Load environment variables from .env file
 load_dotenv()
 
-import gsheet_manager as db
+# ─── DATABASE SELECTION WITH FALLBACK ───────────────────────────
+db = None
+is_gsheet = False
+
+try:
+    import gsheet_manager as gs
+    gs._get_client()       # Test the connection — will raise if invalid
+    db = gs
+    is_gsheet = True
+    print("[INFO] Google Sheets connected successfully.")
+except Exception as e:
+    print(f"[WARN] Google Sheets unavailable: {e}")
+    print("[INFO] Falling back to local Excel database.")
+    import excel_manager as ex
+    db = ex
+    is_gsheet = False
+
 import email_service
 import qr_generator
 
 app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
 
-# Initialize Google Sheets database on startup
+# Initialize the selected database on startup
 try:
-    db.init_gsheet()
-    print(f"[INFO] Google Sheets database initialized: {config.GSHEET_ID}")
+    if is_gsheet:
+        db.init_gsheet()
+        print(f"[INFO] Google Sheets DB initialized: {config.GSHEET_ID}")
+    else:
+        db.init_excel()
+        print(f"[INFO] Excel DB initialized at {config.EXCEL_FILE}")
 except Exception as e:
-    print(f"[ERROR] Failed to initialize Google Sheets: {e}")
+    print(f"[ERROR] DB initialization failed: {e}")
 
 
 # ─── AUTH DECORATORS ─────────────────────────────────────────────
