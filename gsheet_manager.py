@@ -60,7 +60,12 @@ def _get_ws(name):
 def _get_client():
     """Get the gspread client, initializing if necessary."""
     global _gc, _sh
-    if _gc is None:
+    if _sh is not None:
+        return _sh
+    
+    with sheet_lock:
+        if _sh is not None:
+            return _sh
         # Check if credential JSON is provided in Environment Variables first
         if config.GSHEET_CREDENTIALS_JSON:
             import json
