@@ -87,9 +87,9 @@ function switchTab(tabId) {
 
 // ─── LOAD DASHBOARD ─────────────────────────────────────────
 
-async function loadDashboard() {
+async function loadDashboard(silent = false) {
     try {
-        const { ok, data } = await apiRequest('/api/admin/dashboard-data');
+        const { ok, data } = await apiRequest('/api/admin/dashboard-data', 'GET', null, silent);
 
         if (ok) {
             // Render stats

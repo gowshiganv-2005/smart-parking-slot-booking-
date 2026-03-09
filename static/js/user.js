@@ -12,9 +12,9 @@ let refreshInterval = null;
 
 // ─── UTILITY FUNCTIONS ──────────────────────────────────────
 
-async function apiRequest(url, method = 'GET', body = null) {
+async function apiRequest(url, method = 'GET', body = null, silent = false) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
     try {
         const options = {
@@ -30,12 +30,16 @@ async function apiRequest(url, method = 'GET', body = null) {
         return { ok: response.ok, data };
     } catch (error) {
         clearTimeout(timeoutId);
-        if (error.name === 'AbortError') {
-            console.error('Request timed out:', url);
-            showToast('Request timed out. Server or Google Sheets may be slow.', 'error');
+        if (!silent) {
+            if (error.name === 'AbortError') {
+                console.error('Request timed out:', url);
+                showToast('Request timed out. Please refresh the page.', 'error');
+            } else {
+                console.error('API Request Error:', error);
+                showToast('Connection issue. Please check your network.', 'error');
+            }
         } else {
-            console.error('API Request Error:', error);
-            showToast('Dashboard fetching issue. Check connection.', 'error');
+            console.warn('Background refresh failed (silent):', url);
         }
         return { ok: false, data: { message: error.message } };
     }
@@ -103,11 +107,11 @@ async function loadUserInfo() {
 
 // ─── LOAD OVERVIEW ──────────────────────────────────────────
 
-async function loadOverview() {
+async function loadOverview(silent = false) {
     try {
         const [slotsRes, bookingsRes] = await Promise.all([
-            apiRequest('/api/slots'),
-            apiRequest('/api/user/bookings')
+            apiRequest('/api/slots', 'GET', null, silent),
+            apiRequest('/api/user/bookings', 'GET', null, silent)
         ]);
 
         if (slotsRes.ok) {
@@ -134,9 +138,9 @@ async function loadOverview() {
 
 // ─── LOAD ALL SLOTS ─────────────────────────────────────────
 
-async function loadAllSlots() {
+async function loadAllSlots(silent = false) {
     try {
-        const { ok, data } = await apiRequest('/api/slots');
+        const { ok, data } = await apiRequest('/api/slots', 'GET', null, silent);
         if (ok) {
             renderSlotGrid('allSlots', data.slots);
         } else {
@@ -221,9 +225,9 @@ async function confirmBooking() {
 
 // ─── LOAD MY BOOKINGS ──────────────────────────────────────
 
-async function loadMyBookings() {
+async function loadMyBookings(silent = false) {
     try {
-        const { ok, data } = await apiRequest('/api/user/bookings');
+        const { ok, data } = await apiRequest('/api/user/bookings', 'GET', null, silent);
         if (ok) {
             renderBookingsTable(data.bookings);
         } else {
@@ -403,11 +407,11 @@ function startAutoRefresh() {
         const activeTab = document.querySelector('.tab-content.active');
         if (activeTab) {
             const id = activeTab.id;
-            if (id === 'tab-overview') loadOverview();
-            else if (id === 'tab-slots') loadAllSlots();
-            else if (id === 'tab-bookings') loadMyBookings();
+            if (id === 'tab-overview') loadOverview(true);
+            else if (id === 'tab-slots') loadAllSlots(true);
+            else if (id === 'tab-bookings') loadMyBookings(true);
         }
-    }, 10000); // Refresh every 10 seconds
+    }, 120000); // Refresh every 2 minutes to avoid API rate limits
 }
 
 
