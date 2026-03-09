@@ -205,9 +205,12 @@ def api_login():
             session['user_name'] = 'System Administrator'
             session['user_email'] = config.ADMIN_EMAIL
             session['user_id'] = 0
-            # Log activity in background to not block the response
-            import threading
-            threading.Thread(target=db.log_activity, args=(0, 'Admin', config.ADMIN_EMAIL, 'Admin Login'), daemon=True).start()
+            # Log activity synchronously to ensure Vercel records it
+            try:
+                db.log_activity(0, 'Admin', config.ADMIN_EMAIL, 'Admin Login')
+            except Exception as le:
+                print(f"[WARN] Failed to log admin activity: {le}")
+            
             print(f"[AUTH] Master Admin logged in via unified login")
             return jsonify({
                 'success': True, 
@@ -242,9 +245,12 @@ def api_login():
         else:
             session['user_role'] = 'User'
 
-        # Log activity in background to not block the response
-        import threading
-        threading.Thread(target=db.log_activity, args=(user['UserID'], user['Name'], user['Email'], 'Login'), daemon=True).start()
+        # Log activity synchronously
+        try:
+            db.log_activity(user['UserID'], user['Name'], user['Email'], 'Login')
+        except Exception as le:
+            print(f"[WARN] Failed to log user activity: {le}")
+            
         print(f"[AUTH] {session['user_role']} logged in: {email}")
         return jsonify({
             'success': True, 

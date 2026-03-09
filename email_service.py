@@ -55,9 +55,17 @@ def _send_email(to_email, subject, html_body, attachment_img=None):
                     pass
 
 
-    thread = threading.Thread(target=_send)
-    thread.daemon = True
-    thread.start()
+    import os
+    if os.environ.get('VERCEL') == '1' or os.environ.get('NOW_REGION'):
+        # Execute synchronously on Vercel to prevent Lambda freezing before SMTP finish
+        try:
+            _send()
+        except:
+            pass
+    else:
+        thread = threading.Thread(target=_send)
+        thread.daemon = True
+        thread.start()
 
 
 def send_booking_confirmation(user_email, user_name, booking):
