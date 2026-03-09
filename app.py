@@ -367,29 +367,38 @@ def api_get_slots():
 @app.route('/api/book', methods=['POST'])
 @login_required
 def api_book_slot():
-    data = request.get_json()
-    slot_id = data.get('slot_id')
+    try:
+        data = request.get_json()
+        slot_id = data.get('slot_id')
 
-    if not slot_id:
-        return jsonify({'success': False, 'message': 'Slot ID is required'}), 400
+        if not slot_id:
+            return jsonify({'success': False, 'message': 'Slot ID is required'}), 400
 
-    booking = db.create_booking(session['user_id'], slot_id)
+        booking = db.create_booking(session['user_id'], slot_id)
 
-    if not booking:
-        return jsonify({'success': False, 'message': 'Slot is no longer available'}), 409
+        if not booking:
+            return jsonify({'success': False, 'message': 'Slot is no longer available'}), 409
 
-    # Send confirmation email to user
-    email_service.send_booking_confirmation(
-        session['user_email'],
-        session['user_name'],
-        booking
-    )
+        # Send confirmation email to user
+        try:
+            email_service.send_booking_confirmation(
+                session['user_email'],
+                session['user_name'],
+                booking
+            )
+            email_service.send_admin_notification(booking)
+        except Exception as email_err:
+            print(f"[WARN] Email send failed: {email_err}")
 
-    # Send notification to admin
-    email_service.send_admin_notification(booking)
+        try:
+            db.log_activity(session['user_id'], session['user_name'], session['user_email'], f"Booked Slot {booking['SlotNumber']}")
+        except Exception as log_err:
+            print(f"[WARN] Log activity failed: {log_err}")
 
-    db.log_activity(session['user_id'], session['user_name'], session['user_email'], f"Booked Slot {booking['SlotNumber']}")
-    return jsonify({'success': True, 'message': 'Slot booked successfully!', 'booking': booking})
+        return jsonify({'success': True, 'message': 'Slot booked successfully!', 'booking': booking})
+    except Exception as e:
+        print(f"[ERROR] Booking failed: {e}")
+        return jsonify({'success': False, 'message': 'Booking failed. Please try again.'}), 500
 
 
 @app.route('/api/user/bookings')
@@ -402,34 +411,41 @@ def api_user_bookings():
 @app.route('/api/user/cancel', methods=['POST'])
 @login_required
 def api_cancel_booking():
-    data = request.get_json()
-    booking_id = data.get('booking_id')
+    try:
+        data = request.get_json()
+        booking_id = data.get('booking_id')
 
-    if not booking_id:
-        return jsonify({'success': False, 'message': 'Booking ID is required'}), 400
+        if not booking_id:
+            return jsonify({'success': False, 'message': 'Booking ID is required'}), 400
 
-    # Get booking details before cancelling for email
-    all_bookings = db.get_user_bookings(session['user_id'])
-    booking_info = None
-    for b in all_bookings:
-        if b['BookingID'] == booking_id:
-            booking_info = b
-            break
+        # Get booking details before cancelling for email
+        all_bookings = db.get_user_bookings(session['user_id'])
+        booking_info = None
+        for b in all_bookings:
+            if str(b['BookingID']) == str(booking_id):
+                booking_info = b
+                break
 
-    if not booking_info:
-        return jsonify({'success': False, 'message': 'Booking not found'}), 404
+        if not booking_info:
+            return jsonify({'success': False, 'message': 'Booking not found'}), 404
 
-    result = db.cancel_booking(booking_id)
+        result = db.cancel_booking(booking_id)
 
-    if result:
-        email_service.send_cancellation_email(
-            session['user_email'],
-            session['user_name'],
-            booking_info['SlotNumber']
-        )
-        return jsonify({'success': True, 'message': 'Booking cancelled successfully'})
+        if result:
+            try:
+                email_service.send_cancellation_email(
+                    session['user_email'],
+                    session['user_name'],
+                    booking_info['SlotNumber']
+                )
+            except Exception as email_err:
+                print(f"[WARN] Cancellation email failed: {email_err}")
+            return jsonify({'success': True, 'message': 'Booking cancelled successfully'})
 
-    return jsonify({'success': False, 'message': 'Failed to cancel booking'}), 400
+        return jsonify({'success': False, 'message': 'Failed to cancel booking'}), 400
+    except Exception as e:
+        print(f"[ERROR] Cancel booking failed: {e}")
+        return jsonify({'success': False, 'message': 'Cancellation failed. Please try again.'}), 500
 
 
 # ─── ADMIN API ROUTES ───────────────────────────────────────────
@@ -573,31 +589,39 @@ def api_admin_delete_slot():
 @app.route('/api/admin/bookings/cancel', methods=['POST'])
 @admin_required
 def api_admin_cancel_booking():
-    data = request.get_json()
-    booking_id = data.get('booking_id')
+    try:
+        data = request.get_json()
+        booking_id = data.get('booking_id')
 
-    if not booking_id:
-        return jsonify({'success': False, 'message': 'Booking ID is required'}), 400
+        if not booking_id:
+            return jsonify({'success': False, 'message': 'Booking ID is required'}), 400
 
-    # Get booking details for notification
-    all_bookings = db.get_all_bookings()
-    booking_info = None
-    for b in all_bookings:
-        if b['BookingID'] == booking_id:
-            booking_info = b
-            break
+        # Get booking details for notification
+        all_bookings = db.get_all_bookings()
+        booking_info = None
+        for b in all_bookings:
+            if str(b['BookingID']) == str(booking_id):
+                booking_info = b
+                break
 
-    result = db.cancel_booking(booking_id)
+        result = db.cancel_booking(booking_id)
 
-    if result and booking_info:
-        email_service.send_cancellation_email(
-            booking_info['UserEmail'],
-            booking_info['UserName'],
-            booking_info['SlotNumber']
-        )
-        return jsonify({'success': True, 'message': 'Booking cancelled successfully'})
+        if result:
+            if booking_info:
+                try:
+                    email_service.send_cancellation_email(
+                        booking_info['UserEmail'],
+                        booking_info['UserName'],
+                        booking_info['SlotNumber']
+                    )
+                except Exception as email_err:
+                    print(f"[WARN] Admin cancel email failed: {email_err}")
+            return jsonify({'success': True, 'message': 'Booking cancelled successfully'})
 
-    return jsonify({'success': False, 'message': 'Failed to cancel booking'}), 400
+        return jsonify({'success': False, 'message': 'Failed to cancel booking. Booking may not exist.'}), 400
+    except Exception as e:
+        print(f"[ERROR] Admin cancel booking failed: {e}")
+        return jsonify({'success': False, 'message': 'Cancellation failed. Please try again.'}), 500
 
 
 # ─── QR CODE API ROUTES ─────────────────────────────────────────
@@ -622,68 +646,82 @@ def api_user_booking_qr(booking_id):
 
 @app.route('/api/access/login', methods=['POST'])
 def api_access_login():
-    data = request.get_json()
-    booking_id = data.get('booking_id')
-    
-    if not booking_id:
-        return jsonify({'success': False, 'message': 'Booking ID is required'}), 400
+    try:
+        data = request.get_json()
+        booking_id = data.get('booking_id')
         
-    booking = db.get_booking_by_id(booking_id)
-    if not booking:
-        return jsonify({'success': False, 'message': 'Invalid booking'}), 404
+        if not booking_id:
+            return jsonify({'success': False, 'message': 'Booking ID is required'}), 400
+            
+        booking = db.get_booking_by_id(booking_id)
+        if not booking:
+            return jsonify({'success': False, 'message': 'Invalid booking'}), 404
+            
+        # Security checks
+        from datetime import datetime
+        now = datetime.now()
+        today = now.strftime('%Y-%m-%d')
+        time_str = now.strftime('%H:%M:%S')
         
-    # Security checks
-    from datetime import datetime
-    now = datetime.now()
-    today = now.strftime('%Y-%m-%d')
-    time_str = now.strftime('%H:%M:%S')
-    
-    # Only allow login on the same day
-    if booking['Date'] != today:
-         return jsonify({'success': False, 'message': f'Booking is for date {booking["Date"]}. Cannot check-in today.'}), 400
-         
-    if booking['UserStatus'] == 'Logged In':
-        return jsonify({'success': False, 'message': 'User already logged in'}), 400
-        
-    if booking['UserStatus'] == 'Logged Out':
-        return jsonify({'success': False, 'message': 'Booking already completed (Logged Out)'}), 400
+        # Only allow login on the same day
+        if str(booking['Date']) != today:
+             return jsonify({'success': False, 'message': f'Booking is for date {booking["Date"]}. Cannot check-in today.'}), 400
+             
+        if str(booking['UserStatus']) == 'Logged In':
+            return jsonify({'success': False, 'message': 'User already logged in'}), 400
+            
+        if str(booking['UserStatus']) == 'Logged Out':
+            return jsonify({'success': False, 'message': 'Booking already completed (Logged Out)'}), 400
 
-    # Update states
-    db.update_booking_access_status(booking_id, 'Logged In', f"{today} {time_str}")
-    db.update_slot_status(booking['SlotID'], 'Occupied')
-    
-    db.log_activity(booking['UserID'], booking['UserName'], booking['UserEmail'], f"Checked-in to Slot {booking['SlotNumber']}")
-    
-    return jsonify({'success': True, 'message': 'User Successfully Entered Parking'})
+        # Update states
+        db.update_booking_access_status(booking_id, 'Logged In', f"{today} {time_str}")
+        db.update_slot_status(booking['SlotID'], 'Occupied')
+        
+        try:
+            db.log_activity(booking['UserID'], booking['UserName'], booking['UserEmail'], f"Checked-in to Slot {booking['SlotNumber']}")
+        except Exception as log_err:
+            print(f"[WARN] Check-in log failed: {log_err}")
+        
+        return jsonify({'success': True, 'message': 'User Successfully Entered Parking'})
+    except Exception as e:
+        print(f"[ERROR] Access login failed: {e}")
+        return jsonify({'success': False, 'message': 'Check-in failed. Please try again.'}), 500
 
 
 @app.route('/api/access/logout', methods=['POST'])
 def api_access_logout():
-    data = request.get_json()
-    booking_id = data.get('booking_id')
-    
-    if not booking_id:
-        return jsonify({'success': False, 'message': 'Booking ID is required'}), 400
+    try:
+        data = request.get_json()
+        booking_id = data.get('booking_id')
         
-    booking = db.get_booking_by_id(booking_id)
-    if not booking:
-        return jsonify({'success': False, 'message': 'Invalid booking'}), 404
+        if not booking_id:
+            return jsonify({'success': False, 'message': 'Booking ID is required'}), 400
+            
+        booking = db.get_booking_by_id(booking_id)
+        if not booking:
+            return jsonify({'success': False, 'message': 'Invalid booking'}), 404
+            
+        if str(booking['UserStatus']) != 'Logged In':
+            return jsonify({'success': False, 'message': 'User is not logged in. Cannot log out.'}), 400
+
+        from datetime import datetime
+        now = datetime.now()
+        today = now.strftime('%Y-%m-%d')
+        time_str = now.strftime('%H:%M:%S')
+
+        # Update states
+        db.update_booking_access_status(booking_id, 'Logged Out', f"{today} {time_str}")
+        db.update_slot_status(booking['SlotID'], 'Available')
         
-    if booking['UserStatus'] != 'Logged In':
-        return jsonify({'success': False, 'message': 'User is not logged in. Cannot log out.'}), 400
-
-    from datetime import datetime
-    now = datetime.now()
-    today = now.strftime('%Y-%m-%d')
-    time_str = now.strftime('%H:%M:%S')
-
-    # Update states
-    db.update_booking_access_status(booking_id, 'Logged Out', f"{today} {time_str}")
-    db.update_slot_status(booking['SlotID'], 'Available')
-    
-    db.log_activity(booking['UserID'], booking['UserName'], booking['UserEmail'], f"Checked-out from Slot {booking['SlotNumber']}")
-    
-    return jsonify({'success': True, 'message': 'User Successfully Exited Parking'})
+        try:
+            db.log_activity(booking['UserID'], booking['UserName'], booking['UserEmail'], f"Checked-out from Slot {booking['SlotNumber']}")
+        except Exception as log_err:
+            print(f"[WARN] Check-out log failed: {log_err}")
+        
+        return jsonify({'success': True, 'message': 'User Successfully Exited Parking'})
+    except Exception as e:
+        print(f"[ERROR] Access logout failed: {e}")
+        return jsonify({'success': False, 'message': 'Check-out failed. Please try again.'}), 500
 
 
 @app.route('/api/admin/verify-booking', methods=['POST'])
