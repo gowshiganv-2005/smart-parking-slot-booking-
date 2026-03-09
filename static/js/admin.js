@@ -77,11 +77,11 @@ function switchTab(tabId) {
 
     document.getElementById('sidebar').classList.remove('open');
 
-    if (tab === 'overview') loadDashboard();
-    else if (tab === 'slots') loadManageSlots();
-    else if (tab === 'bookings') loadAllBookings();
-    else if (tab === 'users') loadUsers();
-    else if (tab === 'logs') loadLogs();
+    if (tabId === 'overview') loadDashboard();
+    else if (tabId === 'slots') loadManageSlots();
+    else if (tabId === 'bookings') loadAllBookings();
+    else if (tabId === 'users') loadUsers();
+    else if (tabId === 'logs') loadLogs();
 }
 
 
