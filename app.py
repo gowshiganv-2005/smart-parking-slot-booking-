@@ -36,6 +36,21 @@ import qr_generator
 app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
 
+# ─── SESSION CONFIGURATION (Long-term stability) ────────────────
+from datetime import timedelta
+app.permanent_session_lifetime = timedelta(hours=12)  # Sessions expire after 12 hours
+
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
+
+@app.after_request
+def add_cache_headers(response):
+    """Cache static assets for 1 hour to reduce loading time on repeat visits."""
+    if request.path.startswith('/static/'):
+        response.headers['Cache-Control'] = 'public, max-age=3600'
+    return response
+
 # Initialize the selected database on startup
 try:
     if is_gsheet:
@@ -130,7 +145,39 @@ def parking_access():
     return render_template('access_control.html', booking=booking)
 
 
-# ─── DIAGNOSTIC ROUTE ────────────────────────────────────────────
+# ─── GLOBAL ERROR HANDLERS (Long-term stability) ────────────────
+
+@app.errorhandler(404)
+def not_found(e):
+    if request.path.startswith('/api/'):
+        return jsonify({'success': False, 'message': 'Endpoint not found'}), 404
+    return redirect(url_for('login_page'))
+
+@app.errorhandler(500)
+def internal_error(e):
+    print(f"[CRITICAL] 500 Error: {e}")
+    if request.path.startswith('/api/'):
+        return jsonify({'success': False, 'message': 'Internal server error. Please try again.'}), 500
+    return redirect(url_for('login_page'))
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    print(f"[CRITICAL] Unhandled Exception: {e}")
+    if request.path.startswith('/api/'):
+        return jsonify({'success': False, 'message': 'An unexpected error occurred.'}), 500
+    return redirect(url_for('login_page'))
+
+
+# ─── HEALTH CHECK & DIAGNOSTIC ROUTES ────────────────────────────
+
+@app.route('/api/health')
+def api_health():
+    """Health check endpoint for uptime monitoring services."""
+    return jsonify({
+        'status': 'healthy',
+        'db_mode': 'Google Sheets' if is_gsheet else 'Local Excel',
+        'version': '2.0.0'
+    })
 
 @app.route('/api/debug/db')
 def api_debug_db():
@@ -143,7 +190,6 @@ def api_debug_db():
             'message': 'Google Sheets is connected and working!'
         })
     except Exception as e:
-        import traceback
         return jsonify({
             'success': False,
             'mode': 'Local (Temporary)',
@@ -310,8 +356,12 @@ def api_user_info():
 
 @app.route('/api/slots')
 def api_get_slots():
-    slots = db.get_all_slots()
-    return jsonify({'success': True, 'slots': slots})
+    try:
+        slots = db.get_all_slots()
+        return jsonify({'success': True, 'slots': slots})
+    except Exception as e:
+        print(f"[ERROR] Failed to get slots: {e}")
+        return jsonify({'success': True, 'slots': []})
 
 
 @app.route('/api/book', methods=['POST'])
@@ -407,22 +457,34 @@ def api_admin_dashboard_data():
 @app.route('/api/admin/slots')
 @admin_required
 def api_admin_slots():
-    slots = db.get_all_slots()
-    return jsonify({'success': True, 'slots': slots})
+    try:
+        slots = db.get_all_slots()
+        return jsonify({'success': True, 'slots': slots})
+    except Exception as e:
+        print(f"[ERROR] Admin slots fetch failed: {e}")
+        return jsonify({'success': True, 'slots': []})
 
 
 @app.route('/api/admin/bookings')
 @admin_required
 def api_admin_bookings():
-    bookings = db.get_all_bookings()
-    return jsonify({'success': True, 'bookings': bookings})
+    try:
+        bookings = db.get_all_bookings()
+        return jsonify({'success': True, 'bookings': bookings})
+    except Exception as e:
+        print(f"[ERROR] Admin bookings fetch failed: {e}")
+        return jsonify({'success': True, 'bookings': []})
 
 
 @app.route('/api/admin/users')
 @super_admin_required
 def api_admin_users():
-    users = db.get_all_users()
-    return jsonify({'success': True, 'users': users})
+    try:
+        users = db.get_all_users()
+        return jsonify({'success': True, 'users': users})
+    except Exception as e:
+        print(f"[ERROR] Admin users fetch failed: {e}")
+        return jsonify({'success': True, 'users': []})
 
 
 @app.route('/api/admin/users/delete', methods=['POST'])
@@ -442,8 +504,12 @@ def api_admin_delete_user():
 @app.route('/api/admin/logs')
 @super_admin_required
 def api_admin_logs():
-    logs = db.get_all_logs()
-    return jsonify({'success': True, 'logs': logs})
+    try:
+        logs = db.get_all_logs()
+        return jsonify({'success': True, 'logs': logs})
+    except Exception as e:
+        print(f"[ERROR] Admin logs fetch failed: {e}")
+        return jsonify({'success': True, 'logs': []})
 
 
 @app.route('/api/user/delete-self', methods=['POST'])
