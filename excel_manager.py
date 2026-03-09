@@ -10,8 +10,8 @@ from datetime import datetime
 from werkzeug.security import generate_password_hash
 import config
 
-# Thread lock to prevent concurrent Excel file access
-excel_lock = threading.Lock()
+# Thread safe re-entrant lock to prevent deadlocks
+excel_lock = threading.RLock()
 
 
 def init_excel():

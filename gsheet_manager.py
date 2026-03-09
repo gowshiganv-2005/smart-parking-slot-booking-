@@ -11,8 +11,8 @@ from datetime import datetime
 import threading
 import time
 
-# Use a lock to prevent concurrent write issues (though gspread handles some of this)
-sheet_lock = threading.Lock()
+# Use a re-entrant lock to prevent deadlocks when functions call each other
+sheet_lock = threading.RLock()
 
 # SCOPES for Google Sheets and Drive
 SCOPES = [
@@ -316,9 +316,9 @@ def update_booking_access_status(booking_id, status, time_str=None):
         if str(row.get('BookingID', '')) == str(booking_id):
             with sheet_lock:
                 ws.update_cell(i + 2, 9, status)
-                if status == 'Checked In' and time_str:
+                if (status == 'Checked In' or status == 'Logged In') and time_str:
                     ws.update_cell(i + 2, 10, time_str)
-                elif status == 'Checked Out' and time_str:
+                elif (status == 'Checked Out' or status == 'Logged Out') and time_str:
                     ws.update_cell(i + 2, 11, time_str)
                 _invalidate('bookings', 'stats', 'full_dashboard')
             return True
