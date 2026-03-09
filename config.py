@@ -26,3 +26,10 @@ GSHEET_CREDENTIALS_FILE = 'aqueous-cortex-482804-k1-88c2cdf0fee4.json'
 # Spreadsheet Access Configuration for Vercel
 # (Optional: Allows passing credential content as raw JSON in env)
 GSHEET_CREDENTIALS_JSON = os.environ.get('GSHEET_CREDENTIALS_JSON')
+
+# Excel Database Configuration (Fallback)
+if os.environ.get('VERCEL') == '1' or os.environ.get('NOW_REGION'):
+    # Vercel serverless environment is read-only except for /tmp
+    EXCEL_FILE = '/tmp/parking_data.xlsx'
+else:
+    EXCEL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'parking_data.xlsx')

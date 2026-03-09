@@ -473,6 +473,73 @@ def get_dashboard_stats():
             'total_bookings': total_bookings,
             'parked_vehicles': parked_vehicles
         }
+
+
+def get_full_dashboard_data():
+    """Get all dashboard data in a single call to avoid multiple file locks/loads."""
+    with excel_lock:
+        wb = _load_workbook()
+
+        # Users
+        ws_users = wb['Users']
+        users = []
+        for row in ws_users.iter_rows(min_row=2, values_only=True):
+            if row and row[0]:
+                users.append({'UserID': row[0]})
+
+        # Slots
+        ws_slots = wb['ParkingSlots']
+        slots = []
+        available_slots = 0
+        booked_slots = 0
+        for row in ws_slots.iter_rows(min_row=2, values_only=True):
+            if row and row[0]:
+                slots.append({
+                    'SlotID': row[0],
+                    'SlotNumber': row[1],
+                    'Status': row[2]
+                })
+                if row[2] == 'Available':
+                    available_slots += 1
+                else:
+                    booked_slots += 1
+
+        # Bookings
+        ws_bookings = wb['Bookings']
+        bookings = []
+        parked_vehicles = 0
+        for row in ws_bookings.iter_rows(min_row=2, values_only=True):
+            if row and row[0]:
+                status = row[8] if len(row) > 8 else 'Pending'
+                bookings.append({
+                    'BookingID': row[0],
+                    'UserID': row[1],
+                    'SlotID': row[2],
+                    'SlotNumber': row[3],
+                    'Date': row[4],
+                    'Time': row[5],
+                    'UserName': row[6],
+                    'UserEmail': row[7],
+                    'UserStatus': status,
+                    'LoginTime': row[9] if len(row) > 9 else 'N/A',
+                    'LogoutTime': row[10] if len(row) > 10 else 'N/A'
+                })
+                if status == 'Logged In' or status == 'Checked In':
+                    parked_vehicles += 1
+
+        return {
+            'stats': {
+                'total_users': len(users),
+                'total_slots': len(slots),
+                'available_slots': available_slots,
+                'booked_slots': booked_slots,
+                'total_bookings': len(bookings),
+                'parked_vehicles': parked_vehicles
+            },
+            'slots': slots,
+            'bookings': bookings
+        }
+
 # ─── ACTIVITY LOGS ─────────────────────────────────────────────
 
 def log_activity(user_id, name, email, action):

@@ -247,9 +247,13 @@ async function loadManageSlots() {
         const { ok, data } = await apiRequest('/api/admin/slots');
         if (ok) {
             renderManageSlots(data.slots);
+        } else {
+            showToast('Failed to load slots data', 'error');
+            document.getElementById('manageSlots').innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><h3>Failed to load slots</h3></div>';
         }
     } catch (e) {
         console.error('Failed to load slots', e);
+        document.getElementById('manageSlots').innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><h3>Failed to load slots</h3></div>';
     }
 }
 
@@ -391,9 +395,13 @@ async function loadAllBookings() {
         const { ok, data } = await apiRequest('/api/admin/bookings');
         if (ok) {
             renderAllBookings(data.bookings);
+        } else {
+            showToast('Failed to load bookings', 'error');
+            document.getElementById('allBookingsTable').innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><h3>Failed to load bookings</h3></div>';
         }
     } catch (e) {
         console.error('Failed to load bookings', e);
+        document.getElementById('allBookingsTable').innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><h3>Failed to load bookings</h3></div>';
     }
 }
 
@@ -504,9 +512,13 @@ async function loadUsers() {
         const { ok, data } = await apiRequest('/api/admin/users');
         if (ok) {
             renderUsersTable(data.users);
+        } else {
+            showToast('Failed to load users', 'error');
+            document.getElementById('usersTable').innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><h3>Failed to load users</h3></div>';
         }
     } catch (e) {
         console.error('Failed to load users', e);
+        document.getElementById('usersTable').innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><h3>Failed to load users</h3></div>';
     }
 }
 
@@ -569,9 +581,13 @@ async function loadLogs() {
         const { ok, data } = await apiRequest('/api/admin/logs');
         if (ok) {
             renderLogsTable(data.logs);
+        } else {
+            showToast('Failed to load logs', 'error');
+            document.getElementById('logsTable').innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><h3>Failed to load logs</h3></div>';
         }
     } catch (e) {
         console.error('Failed to load logs', e);
+        document.getElementById('logsTable').innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><h3>Failed to load logs</h3></div>';
     }
 }
 
