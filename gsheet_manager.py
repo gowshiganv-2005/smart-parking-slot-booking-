@@ -138,10 +138,13 @@ def init_gsheet():
 
 def get_user_by_email(email):
     """Get user details by email."""
-    records = _get_cached_data('users', lambda: _get_ws('Users').get_all_records())
-    for row in records:
-        if str(row.get('Email', '')).lower() == str(email).lower():
-            return row
+    try:
+        records = _get_cached_data('users', lambda: _get_ws('Users').get_all_records())
+        for row in records:
+            if str(row.get('Email', '')).lower() == str(email).lower():
+                return row
+    except Exception as e:
+        print(f"[ERROR] get_user_by_email failed: {e}")
     return None
 
 def get_user_by_id(user_id):
@@ -166,24 +169,28 @@ def register_user(name, email, password_hash, phone, role='User'):
 def get_all_users():
     """Get all registered users with data cleaning for shifted rows."""
     def fetch():
-        sh = _get_client()
-        records = sh.worksheet('Users').get_all_records()
-        clean_records = []
-        for r in records:
-            # Check for data shift bug (UserID is missing or shifted)
-            if not r.get('UserID') or r.get('UserID') == '#':
-                # Attempt to recover by looking at other fields (Name might contain ID)
-                if str(r.get('Name', '')).isnumeric() and len(str(r.get('Name', ''))) > 10:
-                    r['UserID'] = r['Name']
-                    r['Name'] = r.get('Email', 'Unknown')
-                    r['Email'] = r.get('Password', 'Unknown')
-                    r['Phone'] = r.get('Role', 'N/A')
-                    r['Role'] = r.get('LastActive', 'User')
-            
-            # Filter out rows that are clearly empty or just placeholders
-            if r.get('UserID') and str(r.get('UserID')).strip() != '' and str(r.get('UserID')) != '#':
-                clean_records.append(r)
-        return clean_records
+        try:
+            ws = _get_ws('Users')
+            records = ws.get_all_records()
+            clean_records = []
+            for r in records:
+                # Check for data shift bug (UserID is missing or shifted)
+                if not r.get('UserID') or r.get('UserID') == '#':
+                    # Attempt to recover by looking at other fields (Name might contain ID)
+                    if str(r.get('Name', '')).isnumeric() and len(str(r.get('Name', ''))) > 10:
+                        r['UserID'] = r['Name']
+                        r['Name'] = r.get('Email', 'Unknown')
+                        r['Email'] = r.get('Password', 'Unknown')
+                        r['Phone'] = r.get('Role', 'N/A')
+                        r['Role'] = r.get('LastActive', 'User')
+                
+                # Filter out rows that are clearly empty or just placeholders
+                if r.get('UserID') and str(r.get('UserID')).strip() != '' and str(r.get('UserID')) != '#':
+                    clean_records.append(r)
+            return clean_records
+        except Exception as e:
+            print(f"[ERROR] fetch all users failed: {e}")
+            return []
     return _get_cached_data('users', fetch)
 
 def delete_user(user_id):
@@ -216,7 +223,11 @@ def update_user_activity(user_id):
 
 def get_all_slots():
     """Get all parking slots."""
-    return _get_cached_data('slots', lambda: _get_ws('ParkingSlots').get_all_records())
+    try:
+        return _get_cached_data('slots', lambda: _get_ws('ParkingSlots').get_all_records())
+    except Exception as e:
+        print(f"[ERROR] get_all_slots failed: {e}")
+        return []
 
 def add_slot(slot_number):
     """Add a new parking slot."""
@@ -254,51 +265,76 @@ def update_slot_status(slot_id, status):
 
 def create_booking(user_id, slot_id):
     """Book a parking slot."""
-    sh = _get_client()
-    user = get_user_by_id(user_id)
-    ws_slots = sh.worksheet('ParkingSlots')
-    slots = ws_slots.get_all_records()
-    
-    target_slot = None
-    slot_row_idx = -1
-    for i, s in enumerate(slots):
-        if str(s['SlotID']) == str(slot_id) and s['Status'] == 'Available':
-            target_slot = s
-            slot_row_idx = i + 2
-            break
+    try:
+        user = get_user_by_id(user_id)
+        if not user:
+            # Re-fetch users without cache once, just in case
+            _invalidate('users')
+            user = get_user_by_id(user_id)
+            if not user:
+                print(f"[ERROR] Create booking failed: User {user_id} not found in database.")
+                return None
+
+        ws_slots = _get_ws('ParkingSlots')
+        # Use cached slots if possible to reduce API calls
+        slots = get_all_slots()
+        
+        target_slot = None
+        slot_row_idx = -1
+        for i, s in enumerate(slots):
+            if str(s.get('SlotID', '')) == str(slot_id) and s.get('Status') == 'Available':
+                target_slot = s
+                slot_row_idx = i + 2
+                break
+                
+        if not target_slot:
+            # Invalidate slots and retry once - maybe someone else booked it
+            _invalidate('slots')
+            slots = get_all_slots()
+            for i, s in enumerate(slots):
+                if str(s.get('SlotID', '')) == str(slot_id) and s.get('Status') == 'Available':
+                    target_slot = s
+                    slot_row_idx = i + 2
+                    break
+        
+        if not target_slot:
+            return None
             
-    if not target_slot:
+        ws_bookings = _get_ws('Bookings')
+        booking_id = int(time.time() * 1000)
+        now = datetime.now()
+        
+        with sheet_lock:
+            # Mark slot as booked
+            ws_slots.update_cell(slot_row_idx, 3, 'Booked')
+            
+            # Create booking entry
+            booking_data = [
+                booking_id, user_id, slot_id, target_slot['SlotNumber'],
+                now.strftime('%Y-%m-%d'), now.strftime('%H:%M:%S'),
+                user['Name'], user['Email'], 'Pending', 'N/A', 'N/A'
+            ]
+            ws_bookings.append_row(booking_data)
+            
+            # Invalidate caches immediately
+            _invalidate('bookings', 'slots', 'stats', 'full_dashboard')
+            
+        return {
+            'BookingID': booking_id,
+            'UserID': user_id,
+            'SlotID': slot_id,
+            'SlotNumber': target_slot['SlotNumber'],
+            'Date': now.strftime('%Y-%m-%d'),
+            'Time': now.strftime('%H:%M:%S'),
+            'UserName': user['Name'],
+            'UserEmail': user['Email'],
+            'UserStatus': 'Pending',
+            'LoginTime': 'N/A',
+            'LogoutTime': 'N/A'
+        }
+    except Exception as e:
+        print(f"[ERROR] create_booking failed: {e}")
         return None
-        
-    ws_bookings = sh.worksheet('Bookings')
-    booking_id = int(time.time() * 1000)
-    now = datetime.now()
-    
-    with sheet_lock:
-        # Mark slot as booked
-        ws_slots.update_cell(slot_row_idx, 3, 'Booked')
-        
-        # Create booking entry
-        booking_data = [
-            booking_id, user_id, slot_id, target_slot['SlotNumber'],
-            now.strftime('%Y-%m-%d'), now.strftime('%H:%M:%S'),
-            user['Name'], user['Email'], 'Pending', 'N/A', 'N/A'
-        ]
-        ws_bookings.append_row(booking_data)
-        
-    return {
-        'BookingID': booking_id,
-        'UserID': user_id,
-        'SlotID': slot_id,
-        'SlotNumber': target_slot['SlotNumber'],
-        'Date': now.strftime('%Y-%m-%d'),
-        'Time': now.strftime('%H:%M:%S'),
-        'UserName': user['Name'],
-        'UserEmail': user['Email'],
-        'UserStatus': 'Pending',
-        'LoginTime': 'N/A',
-        'LogoutTime': 'N/A'
-    }
 
 def get_booking_by_id(booking_id):
     """Get booking by ID."""
@@ -340,7 +376,11 @@ def cancel_booking(booking_id):
 
 def get_all_bookings():
     """Get all bookings."""
-    return _get_cached_data('bookings', lambda: _get_ws('Bookings').get_all_records())
+    try:
+        return _get_cached_data('bookings', lambda: _get_ws('Bookings').get_all_records())
+    except Exception as e:
+        print(f"[ERROR] get_all_bookings failed: {e}")
+        return []
 
 def get_user_bookings(user_id):
     """Get bookings for a specific user."""
@@ -413,21 +453,27 @@ def get_full_dashboard_data():
 
 def log_activity(user_id, name, email, action):
     """Log an activity."""
-    sh = _get_client()
-    ws = sh.worksheet('ActivityLogs')
-    log_id = int(time.time() * 1000)
-    now = datetime.now()
-    
-    log_data = [
-        log_id, user_id, name, email, action,
-        now.strftime('%Y-%m-%d'), now.strftime('%H:%M:%S')
-    ]
-    with sheet_lock:
-        ws.append_row(log_data)
-    return True
+    try:
+        ws = _get_ws('ActivityLogs')
+        log_id = int(time.time() * 1000)
+        now = datetime.now()
+        
+        log_data = [
+            log_id, user_id, name, email, action,
+            now.strftime('%Y-%m-%d'), now.strftime('%H:%M:%S')
+        ]
+        with sheet_lock:
+            ws.append_row(log_data)
+        return True
+    except Exception as e:
+        print(f"[ERROR] log_activity failed: {e}")
+        return False
 
 def get_all_logs():
     """Get all activity logs."""
-    sh = _get_client()
-    ws = sh.worksheet('ActivityLogs')
-    return ws.get_all_records()
+    try:
+        ws = _get_ws('ActivityLogs')
+        return _get_cached_data('logs', lambda: ws.get_all_records())
+    except Exception as e:
+        print(f"[ERROR] get_all_logs failed: {e}")
+        return []
