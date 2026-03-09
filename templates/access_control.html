@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Parking Access Control - Smart Parking</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=2.2">
     <style>
         .access-card {
             max-width: 500px;
@@ -94,11 +94,11 @@
                 <div style="margin-top: 32px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                     <button class="btn btn-success" id="loginBtn" onclick="handleAccess('login')" {% if
                         booking.UserStatus=='Logged In' or booking.UserStatus=='Logged Out' %}disabled{% endif %}>
-                         CHECKIN
+                        CHECKIN
                     </button>
                     <button class="btn btn-danger" id="logoutBtn" onclick="handleAccess('logout')" {% if
                         booking.UserStatus !='Logged In' %}disabled{% endif %}>
-                         CHECKOUT
+                        CHECKOUT
                     </button>
                 </div>
                 <input type="hidden" id="bookingIdStore" value="{{ booking.BookingID }}">

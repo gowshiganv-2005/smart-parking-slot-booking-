@@ -24,7 +24,7 @@ function hideAlert() {
 
 async function apiRequest(url, method = 'GET', body = null) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
     try {
         const options = {
@@ -36,12 +36,19 @@ async function apiRequest(url, method = 'GET', body = null) {
 
         const response = await fetch(url, options);
         clearTimeout(timeoutId);
-        const data = await response.json();
+
+        let data;
+        try {
+            data = await response.json();
+        } catch (e) {
+            throw new Error('Server returned invalid data format');
+        }
+
         return { ok: response.ok, data };
     } catch (error) {
         clearTimeout(timeoutId);
         if (error.name === 'AbortError') {
-            throw new Error('Request timed out. Server may be busy, please try again.');
+            throw new Error('Request timed out. Server may be slow, please try again.');
         }
         throw error;
     }
