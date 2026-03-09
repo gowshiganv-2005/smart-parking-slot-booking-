@@ -139,9 +139,13 @@ async function loadAllSlots() {
         const { ok, data } = await apiRequest('/api/slots');
         if (ok) {
             renderSlotGrid('allSlots', data.slots);
+        } else {
+            showToast('Failed to load slots', 'error');
+            document.getElementById('allSlots').innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><h3>Failed to load slots</h3></div>';
         }
     } catch (e) {
         console.error('Failed to load slots', e);
+        document.getElementById('allSlots').innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><h3>Failed to load slots</h3></div>';
     }
 }
 
@@ -222,9 +226,13 @@ async function loadMyBookings() {
         const { ok, data } = await apiRequest('/api/user/bookings');
         if (ok) {
             renderBookingsTable(data.bookings);
+        } else {
+            showToast('Failed to load bookings', 'error');
+            document.getElementById('bookingsTable').innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><h3>Failed to load bookings</h3></div>';
         }
     } catch (e) {
         console.error('Failed to load bookings', e);
+        document.getElementById('bookingsTable').innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><h3>Failed to load bookings</h3></div>';
     }
 }
 
