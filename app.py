@@ -657,9 +657,8 @@ def api_access_login():
         if not booking:
             return jsonify({'success': False, 'message': 'Invalid booking'}), 404
             
-        # Security checks
-        from datetime import datetime
-        now = datetime.now()
+        # Security checks - use IST time from DB manager
+        now = db.get_ist_now()
         today = now.strftime('%Y-%m-%d')
         time_str = now.strftime('%H:%M:%S')
         

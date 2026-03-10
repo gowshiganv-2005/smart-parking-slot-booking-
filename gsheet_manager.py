@@ -7,9 +7,14 @@ import gspread
 from google.oauth2.service_account import Credentials
 import config
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import threading
 import time
+
+def get_ist_now():
+    """Get current time in IST (UTC+5:30)."""
+    # Force +5:30 offset to handle serverless/UTC servers
+    return datetime.utcnow() + timedelta(hours=5, minutes=30)
 
 # Use a re-entrant lock to prevent deadlocks when functions call each other
 sheet_lock = threading.RLock()
@@ -36,25 +41,64 @@ _sh = None
 _ws_cache = {}   # Worksheet object cache (avoids repeated sh.worksheet() calls)
 
 def _get_cached_data(key, fetch_func):
-    """Get data from cache if not expired, otherwise fetch new data."""
+    """Get data from cache if not expired, otherwise fetch new data with retries."""
     now = time.time()
     ttl = _CACHE_TTL.get(key, _DEFAULT_CACHE_TTL)
-    if key in _cache and (now - _cache[key]['time']) < ttl:
-        return _cache[key]['data']
-    data = fetch_func()
-    _cache[key] = {'time': now, 'data': data}
-    return data
+    
+    # Check if data exists and is fresh
+    if key in _cache:
+        cached_val, timestamp = _cache[key]
+        if now - timestamp < ttl:
+            return cached_val
+        
+        # If slightly expired (within 3x TTL), return stale data but refresh in background
+        # This is a 'Stale-While-Revalidate' pattern to keep UI fast
+        if now - timestamp < (ttl * 3):
+            # Start background thread to refresh cache
+            def refresh():
+                try:
+                    new_val = fetch_func()
+                    _cache[key] = (new_val, time.time())
+                except:
+                    pass
+            threading.Thread(target=refresh, daemon=True).start()
+            return cached_val
+
+    # Fresh fetch required
+    retries = 3
+    last_error = None
+    for i in range(retries):
+        try:
+            with sheet_lock:
+                data = fetch_func()
+                _cache[key] = (data, time.time())
+                return data
+        except Exception as e:
+            last_error = e
+            time.sleep(1) # Wait before retry
+            print(f"[WARN] Cache fetch retry {i+1} for {key}: {e}")
+    
+    # If all retries fail, return stale data as last resort
+    if key in _cache:
+        return _cache[key][0]
+        
+    raise last_error
 
 def _invalidate(*keys):
     """Invalidate specific cache keys."""
-    for k in keys:
-        _cache.pop(k, None)
+    for key in keys:
+        if key in _cache:
+            del _cache[key]
 
 def _get_ws(name):
     """Get (and cache) a worksheet object to avoid repeated API calls."""
     if name not in _ws_cache:
-        sh = _get_client()
-        _ws_cache[name] = sh.worksheet(name)
+        try:
+            sh = _get_client()
+            _ws_cache[name] = sh.worksheet(name)
+        except Exception as e:
+            print(f"[ERROR] Failed to access worksheet {name}: {e}")
+            raise e
     return _ws_cache[name]
 
 def _get_client():
@@ -212,7 +256,7 @@ def update_user_activity(user_id):
         records = _get_cached_data('users', lambda: ws.get_all_records())
         for i, row in enumerate(records):
             if str(row.get('UserID', '')) == str(user_id):
-                now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                now = get_ist_now().strftime('%Y-%m-%d %H:%M:%S')
                 ws.update_cell(i + 2, 7, now)
                 return True
     except Exception:
@@ -302,7 +346,7 @@ def create_booking(user_id, slot_id):
             
         ws_bookings = _get_ws('Bookings')
         booking_id = int(time.time() * 1000)
-        now = datetime.now()
+        now = get_ist_now()
         
         with sheet_lock:
             # Mark slot as booked
@@ -456,7 +500,7 @@ def log_activity(user_id, name, email, action):
     try:
         ws = _get_ws('ActivityLogs')
         log_id = int(time.time() * 1000)
-        now = datetime.now()
+        now = get_ist_now()
         
         log_data = [
             log_id, user_id, name, email, action,

@@ -16,7 +16,14 @@ ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'admin@smartparking.com')
 
 # Parking Configuration
 TOTAL_SLOTS = int(os.environ.get('TOTAL_SLOTS', 20))
-BASE_URL = os.environ.get('BASE_URL', 'http://127.0.0.1:5000')
+# Default to local, but prioritize environment variable for production
+BASE_URL = os.environ.get('BASE_URL')
+if not BASE_URL:
+    if os.environ.get('VERCEL') == '1' or os.environ.get('NOW_REGION'):
+        # On Vercel, we often rely on the request host, but we can set a placeholder
+        BASE_URL = 'https://smart-parking-jeevan.vercel.app' 
+    else:
+        BASE_URL = 'http://127.0.0.1:5000'
 
 # Google Sheets Configuration
 GSHEET_ID = os.environ.get('GSHEET_ID', '1ETo_KdLwhE1Y_mhPXCDjwVhe1xFIPeigyx3qvobOrx4')

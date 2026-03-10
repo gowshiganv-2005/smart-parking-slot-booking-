@@ -6,9 +6,13 @@ Handles all CRUD operations on the Excel-based database.
 import os
 import threading
 from openpyxl import Workbook, load_workbook
-from datetime import datetime
+from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash
 import config
+
+def get_ist_now():
+    """Get current time in IST (UTC+5:30)."""
+    return datetime.utcnow() + timedelta(hours=5, minutes=30)
 
 # Thread safe re-entrant lock to prevent deadlocks
 excel_lock = threading.RLock()
@@ -297,7 +301,7 @@ def create_booking(user_id, slot_id):
                 max_id = max(max_id, row[0])
         new_id = max_id + 1
 
-        now = datetime.now()
+        now = get_ist_now()
         date_str = now.strftime('%Y-%m-%d')
         time_str = now.strftime('%H:%M:%S')
 
@@ -555,7 +559,7 @@ def log_activity(user_id, name, email, action):
                 max_id = max(max_id, row[0])
         new_id = max_id + 1
 
-        now = datetime.now()
+        now = get_ist_now()
         date_str = now.strftime('%Y-%m-%d')
         time_str = now.strftime('%H:%M:%S')
 
