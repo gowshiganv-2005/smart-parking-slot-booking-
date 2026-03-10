@@ -147,23 +147,23 @@ def get_all_users():
                     'Name': row[1],
                     'Email': row[2],
                     'Phone': row[4] if len(row) > 4 else '',
-                    'LastActive': row[5] if len(row) > 5 else 'N/A'
+                    'Role': row[5] if len(row) > 5 else 'User',
+                    'LastActive': row[6] if len(row) > 6 else 'N/A'
                 })
         return users
 
 
 def update_user_activity(user_id):
     """Update the LastActive timestamp for a user."""
-    from datetime import datetime
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now = get_ist_now().strftime("%Y-%m-%d %H:%M:%S")
     with excel_lock:
         wb = _load_workbook()
         ws = wb['Users']
         updated = False
         for row in ws.iter_rows(min_row=2):
             if row[0].value == user_id:
-                # Ensure we have enough columns for row (LastActive is col 6)
-                ws.cell(row=row[0].row, column=6, value=now)
+                # LastActive is column 7 (index 6)
+                ws.cell(row=row[0].row, column=7, value=now)
                 updated = True
                 break
         if updated:

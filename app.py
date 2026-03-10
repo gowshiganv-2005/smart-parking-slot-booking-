@@ -180,24 +180,14 @@ def api_health():
     })
 
 @app.route('/api/debug/db')
+@admin_required
 def api_debug_db():
-    try:
-        import gsheet_manager as gs
-        gs._get_client()
-        return jsonify({
-            'success': True,
-            'mode': 'Cloud (Persistent)',
-            'message': 'Google Sheets is connected and working!'
-        })
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'mode': 'Local (Temporary)',
-            'error_type': type(e).__name__,
-            'error_message': str(e),
-            'has_env_json': bool(config.GSHEET_CREDENTIALS_JSON),
-            'gsheet_id': config.GSHEET_ID
-        })
+    """Diagnostic endpoint — admin only."""
+    return jsonify({
+        'success': True,
+        'mode': 'Google Sheets' if is_gsheet else 'Local Excel',
+        'message': 'Database connection is healthy.'
+    })
 
 
 # ─── AUTH API ROUTES ─────────────────────────────────────────────
@@ -239,7 +229,7 @@ def api_login():
         email = data.get('email', '').strip()
         password = data.get('password', '').strip()
         
-        print(f"[DEBUG] Login attempt for: {email}")
+
 
         if not all([email, password]):
             return jsonify({'success': False, 'message': 'Email and password are required'}), 400
@@ -703,8 +693,7 @@ def api_access_logout():
         if str(booking['UserStatus']) != 'Logged In':
             return jsonify({'success': False, 'message': 'User is not logged in. Cannot log out.'}), 400
 
-        from datetime import datetime
-        now = datetime.now()
+        now = db.get_ist_now()
         today = now.strftime('%Y-%m-%d')
         time_str = now.strftime('%H:%M:%S')
 

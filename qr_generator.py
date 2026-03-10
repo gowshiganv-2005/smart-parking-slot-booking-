@@ -6,7 +6,6 @@ Generates QR codes containing booking information.
 import qrcode
 import io
 import base64
-import json
 
 
 def generate_booking_qr(booking):

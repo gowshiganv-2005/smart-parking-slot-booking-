@@ -28,13 +28,15 @@ SCOPES = [
 # Cache for frequently accessed data to avoid 429 Quota Errors and slow loading
 _cache = {}
 _CACHE_TTL = {
-    'slots':    300,   # 5 min — slots don't change often
-    'users':    120,   # 2 min — user list changes occasionally
-    'bookings': 60,    # 1 min — bookings change more often
-    'logs':     300,   # 5 min — logs are append-only
-    'stats':    60,    # 1 min — stats must be reasonably fresh
+    'slots':           30,    # 30s — must reflect bookings quickly
+    'users':           120,   # 2 min — user list changes rarely
+    'bookings':        30,    # 30s — bookings change often
+    'logs':            300,   # 5 min — logs are append-only
+    'stats':           30,    # 30s — derived from slots/bookings
+    'dashboard_stats': 30,    # 30s
+    'full_dashboard':  30,    # 30s
 }
-_DEFAULT_CACHE_TTL = 120   # 2 min fallback
+_DEFAULT_CACHE_TTL = 60   # 1 min fallback
 
 _gc = None
 _sh = None

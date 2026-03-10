@@ -818,13 +818,9 @@ function startAutoRefresh() {
         const activeTab = document.querySelector('.tab-content.active');
         if (activeTab) {
             const id = activeTab.id;
-            if (id === 'tab-overview') loadDashboard();
-            else if (id === 'tab-slots') loadManageSlots();
-            else if (id === 'tab-bookings') loadAllBookings();
-            else if (id === 'tab-users') loadUsers();
-            else if (id === 'tab-logs') loadLogs();
+            if (id === 'tab-overview') loadDashboard(true);
         }
-    }, 10000);
+    }, 120000); // 2 minutes — prevents Google Sheets API quota errors
 }
 
 
@@ -851,12 +847,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     loadDashboard();
-
-    // Auto-refresh every 60 seconds
-    setInterval(() => {
-        const activeTab = document.querySelector('.tab-content.active');
-        if (activeTab && activeTab.id === 'tab-overview') loadDashboard();
-    }, 60000);
+    startAutoRefresh();
 });
 
 async function deleteUser(userId) {
