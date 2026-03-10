@@ -12,9 +12,9 @@ let refreshInterval = null;
 
 // ─── UTILITY FUNCTIONS ──────────────────────────────────────
 
-async function apiRequest(url, method = 'GET', body = null) {
+async function apiRequest(url, method = 'GET', body = null, silent = false) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for admin calls
+    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s timeout for Google Sheets
 
     try {
         const options = {
@@ -30,12 +30,16 @@ async function apiRequest(url, method = 'GET', body = null) {
         return { ok: response.ok, data };
     } catch (error) {
         clearTimeout(timeoutId);
-        if (error.name === 'AbortError') {
-            console.error('Request timed out:', url);
-            showToast('Request timed out. Server or Google Sheets may be slow.', 'error');
+        if (!silent) {
+            if (error.name === 'AbortError') {
+                console.error('Request timed out:', url);
+                showToast('Request timed out. Server may be slow.', 'error');
+            } else {
+                console.error('API Request Error:', error);
+                showToast('Connection issue. Check your network.', 'error');
+            }
         } else {
-            console.error('API Request Error:', error);
-            showToast('Dashboard fetching issue. Check connection.', 'error');
+            console.warn('Background request failed (silent):', url, error.message);
         }
         return { ok: false, data: { message: error.message } };
     }
@@ -87,7 +91,12 @@ function switchTab(tabId) {
 
 // ─── LOAD DASHBOARD ─────────────────────────────────────────
 
+let _dashboardLoading = false;  // Prevent overlapping fetches
+
 async function loadDashboard(silent = false) {
+    if (_dashboardLoading) return;  // Skip if already fetching
+    _dashboardLoading = true;
+
     try {
         const { ok, data } = await apiRequest('/api/admin/dashboard-data', 'GET', null, silent);
 
@@ -114,23 +123,17 @@ async function loadDashboard(silent = false) {
 
             // Render recent bookings (last 5)
             renderRecentBookings(allBookings.slice(-5).reverse());
-        } else {
+        } else if (!silent) {
             const errorMsg = data.error || data.message || 'Fetching issue';
             showToast(`Dashboard Error: ${errorMsg}`, 'error');
             console.error('Dashboard Fetch failed:', data);
-
-            // Auto-retry once after 3 seconds
-            setTimeout(() => {
-                const activeTab = document.querySelector('.tab-content.active');
-                if (activeTab && activeTab.id === 'tab-overview') {
-                    console.log('Auto-retrying dashboard fetch...');
-                    loadDashboard();
-                }
-            }, 3000);
         }
     } catch (e) {
-        console.error('Failed to load dashboard', e);
-        showToast('Connection failed. Retrying...', 'info');
+        if (!silent) {
+            console.error('Failed to load dashboard', e);
+        }
+    } finally {
+        _dashboardLoading = false;
     }
 }
 
@@ -491,8 +494,9 @@ async function confirmCancelBooking() {
         if (ok) {
             showToast('Booking cancelled. User has been notified.', 'info');
             closeCancelModal();
-            loadAllBookings();
-            loadDashboard();
+            // Reload sequentially — NOT in parallel — to avoid race conditions
+            await loadAllBookings();
+            await loadDashboard();
         } else {
             showToast(data.message || 'Failed to cancel booking', 'error');
         }
