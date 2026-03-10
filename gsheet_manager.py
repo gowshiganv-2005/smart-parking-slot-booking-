@@ -43,7 +43,14 @@ _sh = None
 _ws_cache = {}   # Worksheet object cache (avoids repeated sh.worksheet() calls)
 
 def _get_cached_data(key, fetch_func):
-    """Get data from cache if not expired, otherwise fetch new data with retries."""
+    """Get data from cache if not expired, otherwise fetch new data with retries.
+    
+    NOTE: No sheet_lock here! The lock caused a DEADLOCK when get_full_dashboard_data
+    held the lock via _get_cached_data, then ThreadPoolExecutor child threads tried 
+    to call get_all_users/get_all_slots which also called _get_cached_data and tried 
+    to acquire the same lock from a different thread. Individual write operations 
+    (append_row, update_cell) already use their own sheet_lock.
+    """
     now = time.time()
     ttl = _CACHE_TTL.get(key, _DEFAULT_CACHE_TTL)
     
@@ -54,9 +61,7 @@ def _get_cached_data(key, fetch_func):
             return cached_val
         
         # If slightly expired (within 3x TTL), return stale data but refresh in background
-        # This is a 'Stale-While-Revalidate' pattern to keep UI fast
         if now - timestamp < (ttl * 3):
-            # Start background thread to refresh cache
             def refresh():
                 try:
                     new_val = fetch_func()
@@ -66,18 +71,17 @@ def _get_cached_data(key, fetch_func):
             threading.Thread(target=refresh, daemon=True).start()
             return cached_val
 
-    # Fresh fetch required
-    retries = 3
+    # Fresh fetch required — NO lock here (prevents deadlock with ThreadPoolExecutor)
+    retries = 2
     last_error = None
     for i in range(retries):
         try:
-            with sheet_lock:
-                data = fetch_func()
-                _cache[key] = (data, time.time())
-                return data
+            data = fetch_func()
+            _cache[key] = (data, time.time())
+            return data
         except Exception as e:
             last_error = e
-            time.sleep(1) # Wait before retry
+            time.sleep(0.5)
             print(f"[WARN] Cache fetch retry {i+1} for {key}: {e}")
     
     # If all retries fail, return stale data as last resort
