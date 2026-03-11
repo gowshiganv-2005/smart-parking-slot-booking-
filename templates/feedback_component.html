@@ -1,0 +1,60 @@
+<!-- Feedback System Module -->
+<link rel="stylesheet" href="/static/css/feedback.css">
+
+<div class="feedback-container" id="feedback-section">
+    <div class="feedback-header">
+        <h2>Share Your Feedback</h2>
+        <p>Your experience matters to us. Help us improve!</p>
+    </div>
+
+    <form id="feedbackForm" novalidate>
+        <!-- Name Input -->
+        <div class="form-group">
+            <label for="name">Full Name</label>
+            <input type="text" id="name" placeholder="John Doe" required>
+            <span class="validation-error" id="nameError">Please enter your name</span>
+        </div>
+
+        <!-- Email Input -->
+        <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" placeholder="john@example.com" required>
+            <span class="validation-error" id="emailError">Please enter a valid email</span>
+        </div>
+
+        <!-- Star Rating -->
+        <div class="form-group">
+            <label>How would you rate your experience?</label>
+            <div class="star-rating">
+                <span class="star" data-rating="1">★</span>
+                <span class="star" data-rating="2">★</span>
+                <span class="star" data-rating="3">★</span>
+                <span class="star" data-rating="4">★</span>
+                <span class="star" data-rating="5">★</span>
+            </div>
+            <input type="hidden" id="selectedRating" value="0">
+            <div style="text-align: center;">
+                <span class="validation-error" id="ratingError" style="margin-top: 0;">Please select a star rating</span>
+            </div>
+        </div>
+
+        <!-- Feedback Comment -->
+        <div class="form-group">
+            <label for="comment">Feedback Comment</label>
+            <textarea id="comment" rows="4" placeholder="Tell us about your experience..." required></textarea>
+            <span class="validation-error" id="commentError">Please enter your feedback</span>
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" class="submit-btn" id="submitBtn">
+            <span id="btnText">Submit Feedback</span>
+            <div class="loader" id="loader"></div>
+        </button>
+
+        <div class="success-message" id="successMessage">
+            Feedback submitted successfully!
+        </div>
+    </form>
+</div>
+
+<script src="/static/js/feedback.js"></script>

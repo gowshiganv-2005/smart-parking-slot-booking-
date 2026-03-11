@@ -37,6 +37,7 @@ app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
 
 # ─── SESSION CONFIGURATION (Long-term stability) ────────────────
+from routes.feedback_routes import feedback_bp
 from datetime import timedelta
 app.permanent_session_lifetime = timedelta(hours=12)  # Sessions expire after 12 hours
 
@@ -98,6 +99,9 @@ def super_admin_required(f):
     return decorated
 
 
+# Register Blueprints
+app.register_blueprint(feedback_bp)
+
 # ─── PAGE ROUTES ─────────────────────────────────────────────────
 
 @app.route('/')
@@ -143,6 +147,11 @@ def parking_access():
     if booking_id:
         booking = db.get_booking_by_id(booking_id)
     return render_template('access_control.html', booking=booking)
+
+
+@app.route('/feedback')
+def feedback_page():
+    return render_template('feedback.html')
 
 
 # ─── GLOBAL ERROR HANDLERS (Long-term stability) ────────────────
