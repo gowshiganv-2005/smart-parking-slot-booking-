@@ -1,5 +1,14 @@
 from flask import Blueprint, request, jsonify
-from models.feedback import feedback_db
+
+# Choose database manager (matches app.py logic)
+db = None
+try:
+    import gsheet_manager as gs
+    gs._get_client()
+    db = gs
+except Exception:
+    import excel_manager as ex
+    db = ex
 
 feedback_bp = Blueprint('feedback', __name__)
 
@@ -29,8 +38,8 @@ def add_feedback():
                 'message': 'Rating must be a number between 1 and 5'
             }), 400
 
-        # Save to MongoDB
-        success = feedback_db.save_feedback(name, email, rating, feedback_text)
+        # Save to Google Sheets / Excel
+        success = db.save_feedback(name, email, rating, feedback_text)
 
         if success:
             return jsonify({
@@ -40,7 +49,7 @@ def add_feedback():
         else:
             return jsonify({
                 'success': False, 
-                'message': 'Could not save feedback. Ensure MongoDB is running.'
+                'message': 'Could not save feedback to the database.'
             }), 500
 
     except Exception as e:
@@ -53,9 +62,8 @@ def add_feedback():
 @feedback_bp.route('/api/admin/feedbacks', methods=['GET'])
 def get_feedbacks():
     try:
-        # Note: In a real app, you'd add @admin_required decorator here
-        # But for this module integration, we'll keep it simple
-        feedbacks = feedback_db.get_all_feedbacks()
+        # Fetch feedbacks from Google Sheets / Excel
+        feedbacks = db.get_all_feedbacks()
         return jsonify({
             'success': True,
             'feedbacks': feedbacks

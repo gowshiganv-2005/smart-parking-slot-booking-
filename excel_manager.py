@@ -47,6 +47,10 @@ def init_excel():
     ws_logs = wb.create_sheet('ActivityLogs')
     ws_logs.append(['LogID', 'UserID', 'UserName', 'UserEmail', 'Action', 'Date', 'Time'])
 
+    # Sheet 5: Feedbacks
+    ws_feedbacks = wb.create_sheet('Feedbacks')
+    ws_feedbacks.append(['FeedbackID', 'Name', 'Email', 'Rating', 'Feedback', 'Date', 'Time', 'CreatedAt'])
+
     wb.save(config.EXCEL_FILE)
     print(f"[INFO] Excel database initialized at {config.EXCEL_FILE}")
 
@@ -589,3 +593,53 @@ def get_all_logs(limit=100):
         # Sort by date and time descending
         logs.sort(key=lambda x: (x['Date'], x['Time']), reverse=True)
         return logs[:limit]
+
+# ─── FEEDBACK OPERATIONS ────────────────────────────────────────
+
+def save_feedback(name, email, rating, feedback_text):
+    """Save user feedback to Excel."""
+    with excel_lock:
+        wb = _load_workbook()
+        if 'Feedbacks' not in wb.sheetnames:
+            ws = wb.create_sheet('Feedbacks')
+            ws.append(['FeedbackID', 'Name', 'Email', 'Rating', 'Feedback', 'Date', 'Time', 'CreatedAt'])
+        else:
+            ws = wb['Feedbacks']
+
+        # Generate new FeedbackID
+        max_id = 0
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if row and row[0] and isinstance(row[0], int):
+                max_id = max(max_id, row[0])
+        new_id = max_id + 1
+
+        now = get_ist_now()
+        ws.append([new_id, name, email, rating, feedback_text, now.strftime('%Y-%m-%d'), now.strftime('%H:%M:%S'), now.isoformat()])
+        _save_workbook(wb)
+        return True
+
+def get_all_feedbacks():
+    """Get all user feedbacks from Excel."""
+    with excel_lock:
+        wb = _load_workbook()
+        if 'Feedbacks' not in wb.sheetnames:
+            return []
+            
+        ws = wb['Feedbacks']
+        feedbacks = []
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if row and row[0]:
+                feedbacks.append({
+                    'FeedbackID': row[0],
+                    'name': row[1],
+                    'email': row[2],
+                    'rating': int(row[3]) if row[3] is not None else 0,
+                    'feedback': row[4],
+                    'Date': row[5],
+                    'Time': row[6],
+                    'createdAt': row[7]
+                })
+        
+        # Sort by CreatedAt descending
+        feedbacks.sort(key=lambda x: x.get('createdAt', ''), reverse=True)
+        return feedbacks

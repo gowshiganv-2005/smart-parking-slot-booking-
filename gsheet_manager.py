@@ -160,7 +160,8 @@ def init_gsheet():
         'Users': ['UserID', 'Name', 'Email', 'Password', 'Phone', 'Role', 'LastActive'],
         'ParkingSlots': ['SlotID', 'SlotNumber', 'Status'],
         'Bookings': ['BookingID', 'UserID', 'SlotID', 'SlotNumber', 'Date', 'Time', 'UserName', 'UserEmail', 'UserStatus', 'LoginTime', 'LogoutTime'],
-        'ActivityLogs': ['LogID', 'UserID', 'UserName', 'UserEmail', 'Action', 'Date', 'Time']
+        'ActivityLogs': ['LogID', 'UserID', 'UserName', 'UserEmail', 'Action', 'Date', 'Time'],
+        'Feedbacks': ['FeedbackID', 'Name', 'Email', 'Rating', 'Feedback', 'Date', 'Time', 'CreatedAt']
     }
     
     existing_sheets = [ws.title for ws in sh.worksheets()]
@@ -526,4 +527,45 @@ def get_all_logs():
         return _get_cached_data('logs', lambda: ws.get_all_records())
     except Exception as e:
         print(f"[ERROR] get_all_logs failed: {e}")
+        return []
+
+# ─── FEEDBACK OPERATIONS ───────────────────────────────────────
+
+def save_feedback(name, email, rating, feedback_text):
+    """Save user feedback."""
+    try:
+        ws = _get_ws('Feedbacks')
+        feedback_id = int(time.time() * 1000)
+        now = get_ist_now()
+        
+        feedback_data = [
+            feedback_id, name, email, rating, feedback_text,
+            now.strftime('%Y-%m-%d'), now.strftime('%H:%M:%S'),
+            now.isoformat()
+        ]
+        with sheet_lock:
+            ws.append_row(feedback_data)
+        return True
+    except Exception as e:
+        print(f"[ERROR] save_feedback failed: {e}")
+        return False
+
+def get_all_feedbacks():
+    """Get all user feedbacks."""
+    try:
+        ws = _get_ws('Feedbacks')
+        # We don't cache feedbacks for now as they are less frequent
+        records = ws.get_all_records()
+        # Ensure 'rating' is an integer for the frontend
+        for r in records:
+            try:
+                r['rating'] = int(r['rating'])
+            except:
+                pass
+            # Rename 'CreatedAt' to 'createdAt' for frontend compatibility if needed
+            if 'CreatedAt' in r:
+                r['createdAt'] = r['CreatedAt']
+        return sorted(records, key=lambda x: x.get('CreatedAt', ''), reverse=True)
+    except Exception as e:
+        print(f"[ERROR] get_all_feedbacks failed: {e}")
         return []
