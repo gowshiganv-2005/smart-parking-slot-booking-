@@ -39,4 +39,19 @@ class FeedbackModel:
             print(f"[ERROR] Failed to save feedback to MongoDB: {e}")
             return False
 
+    def get_all_feedbacks(self):
+        if not self.collection:
+            return []
+        try:
+            feedbacks = list(self.collection.find().sort("createdAt", -1))
+            # Convert ObjectId and datetime to serializable format
+            for f in feedbacks:
+                f['_id'] = str(f['_id'])
+                if isinstance(f.get('createdAt'), datetime):
+                    f['createdAt'] = f['createdAt'].isoformat()
+            return feedbacks
+        except Exception as e:
+            print(f"[ERROR] Failed to fetch feedbacks: {e}")
+            return []
+
 feedback_db = FeedbackModel()

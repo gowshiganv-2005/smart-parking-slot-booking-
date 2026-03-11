@@ -83,6 +83,9 @@ function switchTab(tab) {
     if (tab === 'overview') loadOverview();
     else if (tab === 'slots') loadAllSlots();
     else if (tab === 'bookings') loadMyBookings();
+    else if (tab === 'feedback') {
+        // Feedback tab - no data loading needed as it's static
+    }
 }
 
 

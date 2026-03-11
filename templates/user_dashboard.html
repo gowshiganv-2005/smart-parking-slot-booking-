@@ -44,6 +44,9 @@
                 <button class="nav-item" onclick="switchTab('bookings')" id="nav-bookings">
                     <span class="nav-icon">📋</span> My Bookings
                 </button>
+                <button class="nav-item" onclick="switchTab('feedback')" id="nav-feedback">
+                    <span class="nav-icon">💬</span> Feedback
+                </button>
             </nav>
 
             <div class="sidebar-footer">
@@ -149,6 +152,16 @@
                         <p>Loading bookings...</p>
                     </div>
                 </div>
+            </div>
+
+            <!-- FEEDBACK TAB -->
+            <div class="tab-content" id="tab-feedback">
+                <div class="page-header">
+                    <h1>💬 Share Your Feedback</h1>
+                    <p>We value your thoughts on our parking service</p>
+                </div>
+                
+                {% include 'feedback_component.html' %}
             </div>
 
         </main>

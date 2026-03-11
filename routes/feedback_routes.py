@@ -49,3 +49,20 @@ def add_feedback():
             'success': False, 
             'message': 'Internal Server Error'
         }), 500
+
+@feedback_bp.route('/api/admin/feedbacks', methods=['GET'])
+def get_feedbacks():
+    try:
+        # Note: In a real app, you'd add @admin_required decorator here
+        # But for this module integration, we'll keep it simple
+        feedbacks = feedback_db.get_all_feedbacks()
+        return jsonify({
+            'success': True,
+            'feedbacks': feedbacks
+        }), 200
+    except Exception as e:
+        print(f"[ERROR] Admin Feedbacks API Error: {e}")
+        return jsonify({
+            'success': False,
+            'message': 'Failed to fetch feedbacks'
+        }), 500

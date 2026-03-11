@@ -86,6 +86,7 @@ function switchTab(tabId) {
     else if (tabId === 'bookings') loadAllBookings();
     else if (tabId === 'users') loadUsers();
     else if (tabId === 'logs') loadLogs();
+    else if (tabId === 'feedbacks') loadFeedbacks();
 }
 
 
@@ -797,6 +798,71 @@ async function verifyQrCode(qrData) {
             </div>
         `;
     }
+}
+
+// ─── USER FEEDBACKS ─────────────────────────────────────────
+
+async function loadFeedbacks() {
+    try {
+        const { ok, data } = await apiRequest('/api/admin/feedbacks');
+        if (ok) {
+            renderFeedbacksTable(data.feedbacks);
+        } else {
+            showToast('Failed to load feedbacks', 'error');
+            document.getElementById('feedbacksTable').innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><h3>Failed to load feedbacks</h3></div>';
+        }
+    } catch (e) {
+        console.error('Failed to load feedbacks', e);
+        document.getElementById('feedbacksTable').innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><h3>Failed to load feedbacks</h3></div>';
+    }
+}
+
+function renderFeedbacksTable(feedbacks) {
+    const container = document.getElementById('feedbacksTable');
+    if (!feedbacks.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">💬</div>
+                <h3>No Feedbacks yet</h3>
+                <p>User feedback will appear here once submitted</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>User</th>
+                    <th>Rating</th>
+                    <th>Comment</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${feedbacks.map(f => {
+                    const stars = '⭐'.repeat(f.rating);
+                    return `
+                        <tr>
+                            <td>
+                                <div style="font-size: 13px;">${new Date(f.createdAt).toLocaleDateString()}</div>
+                                <div style="font-size: 11px; opacity: 0.6;">${new Date(f.createdAt).toLocaleTimeString()}</div>
+                            </td>
+                            <td>
+                                <div style="font-weight: 600;">${f.name}</div>
+                                <div style="font-size: 11px; opacity: 0.6;">${f.email}</div>
+                            </td>
+                            <td style="font-size: 14px;">${stars} <small>(${f.rating}/5)</small></td>
+                            <td style="max-width: 300px; white-space: normal; line-height: 1.4; font-size: 13px;">
+                                ${f.feedback}
+                            </td>
+                        </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+    `;
 }
 
 function verifyManualQr() {
