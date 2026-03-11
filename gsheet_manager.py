@@ -558,13 +558,18 @@ def get_all_feedbacks():
         records = ws.get_all_records()
         # Ensure 'rating' is an integer for the frontend
         for r in records:
+            # Map capitalized headers to lowercase keys for frontend consistency
+            r['name'] = r.get('Name')
+            r['email'] = r.get('Email')
+            r['feedback'] = r.get('Feedback')
             try:
-                r['rating'] = int(r['rating'])
+                r['rating'] = int(r.get('Rating', 0))
             except:
-                pass
-            # Rename 'CreatedAt' to 'createdAt' for frontend compatibility if needed
+                r['rating'] = 0
+            
             if 'CreatedAt' in r:
                 r['createdAt'] = r['CreatedAt']
+                
         return sorted(records, key=lambda x: x.get('CreatedAt', ''), reverse=True)
     except Exception as e:
         print(f"[ERROR] get_all_feedbacks failed: {e}")
