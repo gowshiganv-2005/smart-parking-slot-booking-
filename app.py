@@ -248,58 +248,66 @@ def api_register():
         if len(password) < 6:
             return jsonify({'success': False, 'message': 'Password must be at least 6 characters'}), 400
 
-        # Step 4: Create upload directory
-        print("[REG] Step 4: Creating upload dir...")
-        upload_dir = os.path.join('static', 'uploads', 'documents')
-        if not os.path.exists(upload_dir):
-            os.makedirs(upload_dir)
+        # Step 4: Save documents — try disk first, fallback to base64 for read-only filesystems
+        import base64
+        papers_url = 'N/A'
+        license_url = 'N/A'
+        saved_to_disk = False
+        papers_path = ''
+        license_path = ''
+        
+        try:
+            upload_dir = os.path.join('static', 'uploads', 'documents')
+            if not os.path.exists(upload_dir):
+                os.makedirs(upload_dir)
+            
+            timestamp = int(time.time())
+            papers_filename = secure_filename(f"papers_{timestamp}_{vehicle_papers.filename}")
+            license_filename = secure_filename(f"license_{timestamp}_{driver_license.filename}")
+            
+            if papers_filename and license_filename:
+                papers_path = os.path.join(upload_dir, papers_filename)
+                license_path = os.path.join(upload_dir, license_filename)
+                vehicle_papers.save(papers_path)
+                driver_license.save(license_path)
+                papers_url = f"/static/uploads/documents/{papers_filename}"
+                license_url = f"/static/uploads/documents/{license_filename}"
+                saved_to_disk = True
+                print(f"[REG] Files saved to disk.")
+        except OSError:
+            # Fallback: store as base64 data URIs (works on read-only deployments like Vercel)
+            print("[REG] Disk save failed (read-only FS). Using base64 fallback.")
+            vehicle_papers.stream.seek(0)
+            driver_license.stream.seek(0)
+            papers_b64 = base64.b64encode(vehicle_papers.read()).decode('utf-8')
+            license_b64 = base64.b64encode(driver_license.read()).decode('utf-8')
+            papers_ext = vehicle_papers.filename.rsplit('.', 1)[-1].lower() if '.' in vehicle_papers.filename else 'pdf'
+            license_ext = driver_license.filename.rsplit('.', 1)[-1].lower() if '.' in driver_license.filename else 'pdf'
+            mime_map = {'pdf': 'application/pdf', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png'}
+            papers_url = f"data:{mime_map.get(papers_ext, 'application/octet-stream')};base64,{papers_b64}"
+            license_url = f"data:{mime_map.get(license_ext, 'application/octet-stream')};base64,{license_b64}"
 
-        # Step 5: Save documents
-        print("[REG] Step 5: Saving files...")
-        timestamp = int(time.time())
-        
-        papers_filename = secure_filename(f"papers_{timestamp}_{vehicle_papers.filename}")
-        license_filename = secure_filename(f"license_{timestamp}_{driver_license.filename}")
-        
-        if not papers_filename or not license_filename:
-            return jsonify({'success': False, 'message': 'Invalid file names. Please use files with valid names.'}), 400
-        
-        papers_path = os.path.join(upload_dir, papers_filename)
-        license_path = os.path.join(upload_dir, license_filename)
-        
-        vehicle_papers.save(papers_path)
-        driver_license.save(license_path)
-        print(f"[REG] Files saved: {papers_path}, {license_path}")
-        
-        # Step 6: Build URLs
-        papers_url = f"/static/uploads/documents/{papers_filename}"
-        license_url = f"/static/uploads/documents/{license_filename}"
-
-        # Step 7: Validate role
+        # Step 5: Validate role
         if role not in ['User', 'Admin']:
             role = 'User'
 
-        # Step 8: Hash password and register user
-        print("[REG] Step 8: Registering user in DB...")
+        # Step 6: Hash password and register user in database
         hashed = generate_password_hash(password)
         user = db.register_user(name, email, hashed, phone, role, plate_number, papers_url, license_url)
-        print(f"[REG] DB result: {user}")
 
         if not user:
-            # Cleanup uploaded files if registration fails
-            if os.path.exists(papers_path): os.remove(papers_path)
-            if os.path.exists(license_path): os.remove(license_path)
-            print(f"[AUTH] Registration failed: Email {email} already exists")
+            if saved_to_disk:
+                if papers_path and os.path.exists(papers_path): os.remove(papers_path)
+                if license_path and os.path.exists(license_path): os.remove(license_path)
             return jsonify({'success': False, 'message': 'Email already registered'}), 409
 
-        # Step 9: Log activity (non-critical)
-        print("[REG] Step 9: Logging activity...")
+        # Step 7: Log activity (non-critical)
         try:
             db.log_activity(user['UserID'], user['Name'], user['Email'], f'Account Created ({role}) with Plate {plate_number}')
         except Exception as log_err:
             print(f"[WARN] Activity log failed (non-critical): {log_err}")
 
-        print(f"[AUTH] User registered successfully: {email} with plate {plate_number}")
+        print(f"[AUTH] User registered: {email} with plate {plate_number}")
         return jsonify({'success': True, 'message': 'Registration successful! Please login.'})
     
     except Exception as e:
