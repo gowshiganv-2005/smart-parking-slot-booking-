@@ -126,11 +126,15 @@ def _get_client():
                 
             try:
                 creds = json.loads(creds_json)
+                # Aggressive cleanup of private_key (handles Vercel's \n vs \\n issues)
+                if 'private_key' in creds:
+                    creds['private_key'] = creds['private_key'].replace('\\n', '\n')
             except Exception as je:
                 print(f"[ERROR] JSON creds parsing failed: {je}")
                 raise je
                 
             _sh = gspread.service_account_from_dict(creds).open_by_key(config.GSHEET_ID)
+
         else:
             # Fallback to local file - check multiple possible paths
             possible_paths = [
