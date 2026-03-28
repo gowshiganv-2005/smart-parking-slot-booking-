@@ -4,6 +4,7 @@ Smart Slot Parking Booking System - Main Flask Application
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, Response
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 from functools import wraps
 import json
 import os
@@ -203,31 +204,62 @@ def api_debug_db():
 
 @app.route('/api/register', methods=['POST'])
 def api_register():
-    data = request.get_json()
-    name = data.get('name', '').strip()
-    email = data.get('email', '').strip()
-    password = data.get('password', '').strip()
-    role = data.get('role', 'User').strip()
+    # Use request.form and request.files for multipart data
+    name = request.form.get('name', '').strip()
+    email = request.form.get('email', '').strip()
+    password = request.form.get('password', '').strip()
+    phone = request.form.get('phone', '').strip()
+    role = request.form.get('role', 'User').strip()
+    plate_number = request.form.get('plate_number', '').strip()
+    
+    # Document Files
+    vehicle_papers = request.files.get('vehicle_papers')
+    driver_license = request.files.get('driver_license')
 
-    if not all([name, email, password]):
-        return jsonify({'success': False, 'message': 'All fields are required'}), 400
+    if not all([name, email, password, phone, plate_number]) or not vehicle_papers or not driver_license:
+        return jsonify({'success': False, 'message': 'All fields and files are required'}), 400
 
     if len(password) < 6:
         return jsonify({'success': False, 'message': 'Password must be at least 6 characters'}), 400
+
+    # Ensure upload directory exists
+    upload_dir = os.path.join('static', 'uploads', 'documents')
+    if not os.path.exists(upload_dir):
+        os.makedirs(upload_dir)
+
+    # Save documents with semi-unique names
+    import time
+    timestamp = int(time.time())
+    
+    papers_filename = secure_filename(f"papers_{timestamp}_{vehicle_papers.filename}")
+    license_filename = secure_filename(f"license_{timestamp}_{driver_license.filename}")
+    
+    papers_path = os.path.join(upload_dir, papers_filename)
+    license_path = os.path.join(upload_dir, license_filename)
+    
+    vehicle_papers.save(papers_path)
+    driver_license.save(license_path)
+    
+    # Store relative URLs for web access
+    papers_url = f"/static/uploads/documents/{papers_filename}"
+    license_url = f"/static/uploads/documents/{license_filename}"
 
     # Validate role
     if role not in ['User', 'Admin']:
         role = 'User'
 
     hashed = generate_password_hash(password)
-    user = db.register_user(name, email, hashed, data.get('phone', ''), role)
+    user = db.register_user(name, email, hashed, phone, role, plate_number, papers_url, license_url)
 
     if not user:
+        # Cleanup uploaded files if registration fails
+        if os.path.exists(papers_path): os.remove(papers_path)
+        if os.path.exists(license_path): os.remove(license_path)
         print(f"[AUTH] Registration failed: Email {email} already exists")
         return jsonify({'success': False, 'message': 'Email already registered'}), 409
 
-    db.log_activity(user['UserID'], user['Name'], user['Email'], f'Account Created ({role})')
-    print(f"[AUTH] User registered: {email} as {role}")
+    db.log_activity(user['UserID'], user['Name'], user['Email'], f'Account Created ({role}) with Plate {plate_number}')
+    print(f"[AUTH] User registered: {email} with plate {plate_number}")
     return jsonify({'success': True, 'message': 'Registration successful! Please login.'})
 
 
@@ -348,7 +380,11 @@ def api_user_info():
             'UserID': user['UserID'],
             'Name': user['Name'],
             'Email': user['Email'],
-            'Phone': user.get('Phone', 'N/A')
+            'Phone': user.get('Phone', 'N/A'),
+            'Role': user.get('Role', 'User'),
+            'PlateNumber': user.get('PlateNumber', 'N/A'),
+            'PapersUrl': user.get('PapersUrl'),
+            'LicenseUrl': user.get('LicenseUrl')
         }
     })
 

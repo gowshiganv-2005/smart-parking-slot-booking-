@@ -101,6 +101,24 @@ async function loadUserInfo() {
             document.getElementById('userPhone').textContent = user.Phone || 'N/A';
             document.getElementById('welcomeName').textContent = user.Name.split(' ')[0];
             document.getElementById('userAvatar').textContent = user.Name.charAt(0).toUpperCase();
+
+            // Vehicle & Documents
+            const plateNumberEl = document.getElementById('userPlateNumber');
+            if (plateNumberEl) plateNumberEl.textContent = user.PlateNumber || 'N/A';
+
+            const papersLink = document.getElementById('papersLink');
+            if (papersLink && user.PapersUrl) {
+                papersLink.href = user.PapersUrl;
+            } else if (papersLink) {
+                papersLink.style.display = 'none';
+            }
+
+            const licenseLink = document.getElementById('licenseLink');
+            if (licenseLink && user.LicenseUrl) {
+                licenseLink.href = user.LicenseUrl;
+            } else if (licenseLink) {
+                licenseLink.style.display = 'none';
+            }
         }
     } catch (e) {
         console.error('Failed to load user info', e);

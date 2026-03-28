@@ -27,7 +27,7 @@
 
             <div id="alertBox" class="alert"></div>
 
-            <form id="registerForm" onsubmit="return false;">
+            <form id="registerForm" onsubmit="return false;" enctype="multipart/form-data">
                 <div class="form-group">
                     <label for="name">Full Name</label>
                     <input type="text" id="name" placeholder="John Doe" required autocomplete="name">
@@ -39,6 +39,18 @@
                 <div class="form-group">
                     <label for="phone">Phone Number</label>
                     <input type="tel" id="phone" placeholder="9876543210" required autocomplete="tel">
+                </div>
+                <div class="form-group">
+                    <label for="plateNumber">Vehicle Number Plate</label>
+                    <input type="text" id="plateNumber" placeholder="TN-01-AB-1234" required>
+                </div>
+                <div class="form-group">
+                    <label for="vehiclePapers">Vehicle Registration Papers</label>
+                    <input type="file" id="vehiclePapers" accept=".pdf,.jpg,.jpeg,.png" required>
+                </div>
+                <div class="form-group">
+                    <label for="driverLicense">Driver Identity / License</label>
+                    <input type="file" id="driverLicense" accept=".pdf,.jpg,.jpeg,.png" required>
                 </div>
                 <div class="form-group">
                     <label for="role">Account Type</label>

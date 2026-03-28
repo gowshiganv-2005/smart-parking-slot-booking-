@@ -28,10 +28,10 @@ def init_excel():
     # Sheet 1: Users
     ws_users = wb.active
     ws_users.title = 'Users'
-    ws_users.append(['UserID', 'Name', 'Email', 'Password', 'Phone', 'Role', 'LastActive'])
-    # Add default users
-    ws_users.append([1, 'Test User', 'test@example.com', generate_password_hash('123456'), '1234567890', 'User', 'N/A'])
-    ws_users.append([2, 'Jeevan Samuel', 'jeevansamuvel12@gmail.com', generate_password_hash('123456'), '9876543210', 'User', 'N/A'])
+    ws_users.append(['UserID', 'Name', 'Email', 'Password', 'Phone', 'Role', 'PlateNumber', 'PapersUrl', 'LicenseUrl', 'LastActive'])
+    # Add default users [ID, Name, Email, Password, Phone, Role, Plate, Papers, License, LastActive]
+    ws_users.append([1, 'Test User', 'test@example.com', generate_password_hash('123456'), '1234567890', 'User', 'N/A', 'N/A', 'N/A', 'N/A'])
+    ws_users.append([2, 'Jeevan Samuel', 'jeevansamuvel12@gmail.com', generate_password_hash('123456'), '9876543210', 'User', 'N/A', 'N/A', 'N/A', 'N/A'])
 
     # Sheet 2: ParkingSlots
     ws_slots = wb.create_sheet('ParkingSlots')
@@ -84,7 +84,10 @@ def get_user_by_email(email):
                     'Password': row[3],
                     'Phone': row[4] if len(row) > 4 else '',
                     'Role': row[5] if len(row) > 5 else 'User',
-                    'LastActive': row[6] if len(row) > 6 else 'N/A'
+                    'PlateNumber': row[6] if len(row) > 6 else 'N/A',
+                    'PapersUrl': row[7] if len(row) > 7 else 'N/A',
+                    'LicenseUrl': row[8] if len(row) > 8 else 'N/A',
+                    'LastActive': row[9] if len(row) > 9 else 'N/A'
                 }
         return None
 
@@ -103,12 +106,15 @@ def get_user_by_id(user_id):
                     'Password': row[3],
                     'Phone': row[4] if len(row) > 4 else '',
                     'Role': row[5] if len(row) > 5 else 'User',
-                    'LastActive': row[6] if len(row) > 6 else 'N/A'
+                    'PlateNumber': row[6] if len(row) > 6 else 'N/A',
+                    'PapersUrl': row[7] if len(row) > 7 else 'N/A',
+                    'LicenseUrl': row[8] if len(row) > 8 else 'N/A',
+                    'LastActive': row[9] if len(row) > 9 else 'N/A'
                 }
         return None
 
 
-def register_user(name, email, password, phone, role='User'):
+def register_user(name, email, password, phone, role='User', plate_number='N/A', papers_url='N/A', license_url='N/A'):
     """Register a new user. Returns the new user dict or None if email exists."""
     with excel_lock:
         wb = _load_workbook()
@@ -126,7 +132,7 @@ def register_user(name, email, password, phone, role='User'):
                 max_id = max(max_id, row[0])
         new_id = max_id + 1
 
-        ws.append([new_id, name, email, password, phone, role, 'N/A'])
+        ws.append([new_id, name, email, password, phone, role, plate_number, papers_url, license_url, 'N/A'])
         _save_workbook(wb)
 
         return {
@@ -134,7 +140,10 @@ def register_user(name, email, password, phone, role='User'):
             'Name': name,
             'Email': email,
             'Phone': phone,
-            'Role': role
+            'Role': role,
+            'PlateNumber': plate_number,
+            'PapersUrl': papers_url,
+            'LicenseUrl': license_url
         }
 
 
@@ -152,7 +161,10 @@ def get_all_users():
                     'Email': row[2],
                     'Phone': row[4] if len(row) > 4 else '',
                     'Role': row[5] if len(row) > 5 else 'User',
-                    'LastActive': row[6] if len(row) > 6 else 'N/A'
+                    'PlateNumber': row[6] if len(row) > 6 else 'N/A',
+                    'PapersUrl': row[7] if len(row) > 7 else 'N/A',
+                    'LicenseUrl': row[8] if len(row) > 8 else 'N/A',
+                    'LastActive': row[9] if len(row) > 9 else 'N/A'
                 })
         return users
 
@@ -166,8 +178,8 @@ def update_user_activity(user_id):
         updated = False
         for row in ws.iter_rows(min_row=2):
             if row[0].value == user_id:
-                # LastActive is column 7 (index 6)
-                ws.cell(row=row[0].row, column=7, value=now)
+                # LastActive is now column 10
+                ws.cell(row=row[0].row, column=10, value=now)
                 updated = True
                 break
         if updated:

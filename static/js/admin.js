@@ -547,7 +547,8 @@ function renderUsersTable(users) {
                     <th>User ID</th>
                     <th>Name</th>
                     <th>Email</th>
-                    <th>Phone</th>
+                    <th>Vehicle/Plate</th>
+                    <th>Files</th>
                     <th>Last Active</th>
                     <th>Actions</th>
                 </tr>
@@ -558,7 +559,17 @@ function renderUsersTable(users) {
                         <td>#${u.UserID}</td>
                         <td>${u.Name}</td>
                         <td>${u.Email}</td>
-                        <td>${u.Phone || 'N/A'}</td>
+                        <td>
+                            <span class="status-badge status-booked" style="font-family: monospace;">
+                                ${u.PlateNumber || 'N/A'}
+                            </span>
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 8px;">
+                                ${u.PapersUrl ? `<a href="${u.PapersUrl}" target="_blank" title="View Vehicle Papers" style="text-decoration: none; font-size: 18px;">📄</a>` : '—'}
+                                ${u.LicenseUrl ? `<a href="${u.LicenseUrl}" target="_blank" title="View Driver License" style="text-decoration: none; font-size: 18px;">🪪</a>` : '—'}
+                            </div>
+                        </td>
                         <td>
                             <span style="font-size: 11px; color: ${u.LastActive && u.LastActive !== 'N/A' ? 'var(--accent-green)' : 'var(--text-muted)'};">
                                 ${u.LastActive || 'N/A'}

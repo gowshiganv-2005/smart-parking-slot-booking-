@@ -44,6 +44,9 @@
                 <button class="nav-item" onclick="switchTab('bookings')" id="nav-bookings">
                     <span class="nav-icon">📋</span> My Bookings
                 </button>
+                <button class="nav-item" onclick="switchTab('vehicle')" id="nav-vehicle">
+                    <span class="nav-icon">🚗</span> My Vehicle
+                </button>
                 <button class="nav-item" onclick="switchTab('feedback')" id="nav-feedback">
                     <span class="nav-icon">💬</span> Feedback
                 </button>
@@ -151,6 +154,39 @@
                         <div class="spinner"></div>
                         <p>Loading bookings...</p>
                     </div>
+                </div>
+            </div>
+
+            <!-- MY VEHICLE TAB -->
+            <div class="tab-content" id="tab-vehicle">
+                <div class="page-header">
+                    <h1>🚗 My Vehicle Details</h1>
+                    <p>Manage your vehicle information and documents</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card blue" style="grid-column: span 2;">
+                        <div class="stat-icon">🔢</div>
+                        <div class="stat-value" id="userPlateNumber">N/A</div>
+                        <div class="stat-label">Vehicle Number Plate</div>
+                    </div>
+                </div>
+
+                <div class="section-header">
+                    <h2>Uploaded Documents</h2>
+                </div>
+                
+                <div class="stats-grid">
+                    <a id="papersLink" href="#" target="_blank" class="stat-card purple" style="text-decoration: none; cursor: pointer;">
+                        <div class="stat-icon">📄</div>
+                        <div class="stat-value" style="font-size: 1.2rem;">View Papers</div>
+                        <div class="stat-label">Vehicle Registration</div>
+                    </a>
+                    <a id="licenseLink" href="#" target="_blank" class="stat-card orange" style="text-decoration: none; cursor: pointer;">
+                        <div class="stat-icon">🪪</div>
+                        <div class="stat-value" style="font-size: 1.2rem;">View License</div>
+                        <div class="stat-label">Driver Identity</div>
+                    </a>
                 </div>
             </div>
 

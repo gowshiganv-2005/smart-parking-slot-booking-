@@ -1,4 +1,4 @@
-"""
+cc"""
 Google Sheets Database Manager for Smart Parking System
 Handles all CRUD operations using Google Sheets as the primary database.
 """
@@ -157,7 +157,7 @@ def init_gsheet():
     sh = _get_client()
     
     required_sheets = {
-        'Users': ['UserID', 'Name', 'Email', 'Password', 'Phone', 'Role', 'LastActive'],
+        'Users': ['UserID', 'Name', 'Email', 'Password', 'Phone', 'Role', 'PlateNumber', 'PapersUrl', 'LicenseUrl', 'LastActive'],
         'ParkingSlots': ['SlotID', 'SlotNumber', 'Status'],
         'Bookings': ['BookingID', 'UserID', 'SlotID', 'SlotNumber', 'Date', 'Time', 'UserName', 'UserEmail', 'UserStatus', 'LoginTime', 'LogoutTime'],
         'ActivityLogs': ['LogID', 'UserID', 'UserName', 'UserEmail', 'Action', 'Date', 'Time'],
@@ -206,16 +206,26 @@ def get_user_by_id(user_id):
             return row
     return None
 
-def register_user(name, email, password_hash, phone, role='User'):
-    """Register a new user."""
+def register_user(name, email, password_hash, phone, role='User', plate_number='N/A', papers_url='N/A', license_url='N/A'):
+    """Register a new user with vehicle details."""
     if get_user_by_email(email):
         return None
     user_id = int(time.time() * 1000)
-    new_user = [user_id, name, email, password_hash, phone, role, 'N/A']
+    new_user = [user_id, name, email, password_hash, phone, role, plate_number, papers_url, license_url, 'N/A']
     with sheet_lock:
         _get_ws('Users').append_row(new_user)
         _invalidate('users')
-    return {'UserID': user_id, 'Name': name, 'Email': email, 'Phone': phone, 'Role': role, 'LastActive': 'N/A'}
+    return {
+        'UserID': user_id, 
+        'Name': name, 
+        'Email': email, 
+        'Phone': phone, 
+        'Role': role, 
+        'PlateNumber': plate_number,
+        'PapersUrl': papers_url,
+        'LicenseUrl': license_url,
+        'LastActive': 'N/A'
+    }
 
 def get_all_users():
     """Get all registered users with data cleaning for shifted rows."""
@@ -264,7 +274,7 @@ def update_user_activity(user_id):
         for i, row in enumerate(records):
             if str(row.get('UserID', '')) == str(user_id):
                 now = get_ist_now().strftime('%Y-%m-%d %H:%M:%S')
-                ws.update_cell(i + 2, 7, now)
+                ws.update_cell(i + 2, 10, now) # LastActive is now column 10
                 return True
     except Exception:
         pass  # Non-critical — don't block login if this fails

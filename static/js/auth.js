@@ -29,10 +29,16 @@ async function apiRequest(url, method = 'GET', body = null) {
     try {
         const options = {
             method,
-            headers: { 'Content-Type': 'application/json' },
             signal: controller.signal,
         };
-        if (body) options.body = JSON.stringify(body);
+        
+        if (body instanceof FormData) {
+            options.body = body;
+            // No Content-Type header for FormData, browser sets it with boundary
+        } else if (body) {
+            options.headers = { 'Content-Type': 'application/json' };
+            options.body = JSON.stringify(body);
+        }
 
         const response = await fetch(url, options);
         clearTimeout(timeoutId);
@@ -107,13 +113,16 @@ async function handleRegister() {
     const name = document.getElementById('name').value.trim();
     const email = document.getElementById('email').value.trim();
     const phone = document.getElementById('phone').value.trim();
+    const plateNumber = document.getElementById('plateNumber').value.trim();
+    const vehiclePapers = document.getElementById('vehiclePapers').files[0];
+    const driverLicense = document.getElementById('driverLicense').files[0];
     const role = document.getElementById('role').value;
     const password = document.getElementById('password').value.trim();
     const confirmPassword = document.getElementById('confirmPassword').value.trim();
     const btn = document.getElementById('registerBtn');
 
-    if (!name || !email || !phone || !role || !password || !confirmPassword) {
-        showAlert('Please fill in all fields');
+    if (!name || !email || !phone || !plateNumber || !role || !password || !confirmPassword || !vehiclePapers || !driverLicense) {
+        showAlert('Please fill in all fields and upload required documents');
         return;
     }
 
@@ -132,7 +141,17 @@ async function handleRegister() {
     btn.innerHTML = '<span class="spinner"></span> Creating Account...';
 
     try {
-        const { ok, data } = await apiRequest('/api/register', 'POST', { name, email, phone, password, role });
+        const formData = new FormData();
+        formData.append('name', name);
+        formData.append('email', email);
+        formData.append('phone', phone);
+        formData.append('plate_number', plateNumber);
+        formData.append('vehicle_papers', vehiclePapers);
+        formData.append('driver_license', driverLicense);
+        formData.append('password', password);
+        formData.append('role', role);
+
+        const { ok, data } = await apiRequest('/api/register', 'POST', formData);
 
         if (ok) {
             showAlert('Account created successfully! Redirecting to login...', 'success');
