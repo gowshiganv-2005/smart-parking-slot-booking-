@@ -172,12 +172,16 @@ def init_gsheet():
             ws.append_row(headers)
             print(f"[INFO] Created sheet: {title}")
         else:
-            # Update headers if missing or mismatched (Migration)
+            # Force-update headers every time to ensure columns like PlateNumber exist
+            # This is safer than just checking first_row != headers
             ws = _get_ws(title)
-            first_row = ws.row_values(1)
-            if first_row != headers:
-                print(f"[INFO] Updating headers for sheet: {title}")
+            try:
+                # Use batch update for row 1 to ensure all headers ARE present
+                print(f"[INFO] Force-syncing headers for: {title}")
                 ws.update('A1', [headers])
+            except Exception as ue:
+                print(f"[WARN] Partial header update for {title}: {ue}")
+
 
     # Ensure default data is present (e.g., if sheet was manually created but empty)
     ws_slots = _get_ws('ParkingSlots')

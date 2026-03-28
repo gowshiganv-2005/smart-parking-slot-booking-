@@ -39,6 +39,18 @@ import qr_generator
 app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
 
+
+@app.route('/api/status')
+def api_status():
+    """Diagnostic route to check backend connection status."""
+    return jsonify({
+        'database': 'Google Sheets' if is_gsheet else 'Local Excel (Fallback)',
+        'sheets_initialized': True if db else False,
+        'config_loaded': True if config.GSHEET_ID else False,
+        'version': '3.4.1'
+    })
+
+
 # ─── SESSION CONFIGURATION (Long-term stability) ────────────────
 from routes.feedback_routes import feedback_bp
 from datetime import timedelta
