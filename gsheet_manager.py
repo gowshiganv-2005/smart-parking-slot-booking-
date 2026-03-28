@@ -172,8 +172,12 @@ def init_gsheet():
             ws.append_row(headers)
             print(f"[INFO] Created sheet: {title}")
         else:
-            # Optionally check headers
-            pass
+            # Update headers if missing or mismatched (Migration)
+            ws = _get_ws(title)
+            first_row = ws.row_values(1)
+            if first_row != headers:
+                print(f"[INFO] Updating headers for sheet: {title}")
+                ws.update('A1', [headers])
 
     # Initialize default slots if none exist
     ws_slots = sh.worksheet('ParkingSlots')

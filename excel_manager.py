@@ -19,40 +19,59 @@ excel_lock = threading.RLock()
 
 
 def init_excel():
-    """Initialize the Excel database with required sheets and default data."""
-    if os.path.exists(config.EXCEL_FILE):
+    """Initialize or migrate the Excel database with required sheets and headers."""
+    required_sheets = {
+        'Users': ['UserID', 'Name', 'Email', 'Password', 'Phone', 'Role', 'PlateNumber', 'PapersUrl', 'LicenseUrl', 'LastActive'],
+        'ParkingSlots': ['SlotID', 'SlotNumber', 'Status'],
+        'Bookings': ['BookingID', 'UserID', 'SlotID', 'SlotNumber', 'Date', 'Time', 'UserName', 'UserEmail', 'UserStatus', 'LoginTime', 'LogoutTime'],
+        'ActivityLogs': ['LogID', 'UserID', 'UserName', 'UserEmail', 'Action', 'Date', 'Time'],
+        'Feedbacks': ['FeedbackID', 'Name', 'Email', 'Rating', 'Feedback', 'Date', 'Time', 'CreatedAt']
+    }
+
+    if not os.path.exists(config.EXCEL_FILE):
+        wb = Workbook()
+        # Initialize each required sheet
+        for i, (title, headers) in enumerate(required_sheets.items()):
+            if i == 0:
+                ws = wb.active
+                ws.title = title
+            else:
+                ws = wb.create_sheet(title)
+            ws.append(headers)
+
+            # Default slots
+            if title == 'ParkingSlots':
+                for j in range(1, config.TOTAL_SLOTS + 1):
+                    ws.append([j, f'P-{j:03d}', 'Available'])
+            
+            # Default users (demo)
+            if title == 'Users':
+                ws.append([1, 'Test User', 'test@example.com', generate_password_hash('123456'), '1234567890', 'User', 'N/A', 'N/A', 'N/A', 'N/A'])
+        
+        wb.save(config.EXCEL_FILE)
+        print(f"[INFO] New Excel database initialized.")
         return
 
-    wb = Workbook()
-
-    # Sheet 1: Users
-    ws_users = wb.active
-    ws_users.title = 'Users'
-    ws_users.append(['UserID', 'Name', 'Email', 'Password', 'Phone', 'Role', 'PlateNumber', 'PapersUrl', 'LicenseUrl', 'LastActive'])
-    # Add default users [ID, Name, Email, Password, Phone, Role, Plate, Papers, License, LastActive]
-    ws_users.append([1, 'Test User', 'test@example.com', generate_password_hash('123456'), '1234567890', 'User', 'N/A', 'N/A', 'N/A', 'N/A'])
-    ws_users.append([2, 'Jeevan Samuel', 'jeevansamuvel12@gmail.com', generate_password_hash('123456'), '9876543210', 'User', 'N/A', 'N/A', 'N/A', 'N/A'])
-
-    # Sheet 2: ParkingSlots
-    ws_slots = wb.create_sheet('ParkingSlots')
-    ws_slots.append(['SlotID', 'SlotNumber', 'Status'])
-    for i in range(1, config.TOTAL_SLOTS + 1):
-        ws_slots.append([i, f'P-{i:03d}', 'Available'])
-
-    # Sheet 3: Bookings
-    ws_bookings = wb.create_sheet('Bookings')
-    ws_bookings.append(['BookingID', 'UserID', 'SlotID', 'SlotNumber', 'Date', 'Time', 'UserName', 'UserEmail', 'UserStatus', 'LoginTime', 'LogoutTime'])
-
-    # Sheet 4: ActivityLogs
-    ws_logs = wb.create_sheet('ActivityLogs')
-    ws_logs.append(['LogID', 'UserID', 'UserName', 'UserEmail', 'Action', 'Date', 'Time'])
-
-    # Sheet 5: Feedbacks
-    ws_feedbacks = wb.create_sheet('Feedbacks')
-    ws_feedbacks.append(['FeedbackID', 'Name', 'Email', 'Rating', 'Feedback', 'Date', 'Time', 'CreatedAt'])
-
-    wb.save(config.EXCEL_FILE)
-    print(f"[INFO] Excel database initialized at {config.EXCEL_FILE}")
+    # Migration: Update existing file headers
+    wb = _load_workbook()
+    changed = False
+    for title, headers in required_sheets.items():
+        if title not in wb.sheetnames:
+            ws = wb.create_sheet(title)
+            ws.append(headers)
+            changed = True
+        else:
+            ws = wb[title]
+            first_row = [cell.value for cell in ws[1]]
+            if first_row != headers:
+                # Update header row while preserving other data
+                for col_idx, header in enumerate(headers, 1):
+                    ws.cell(row=1, column=col_idx, value=header)
+                changed = True
+    
+    if changed:
+        _save_workbook(wb)
+        print("[INFO] Excel database migrated to new schema.")
 
 
 def _load_workbook():
