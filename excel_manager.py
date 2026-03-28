@@ -112,18 +112,18 @@ def get_user_by_email(email):
 
 
 def get_user_by_id(user_id):
-    """Find a user by their UserID."""
+    """Find a user by their UserID with type-agnostic comparison."""
     with excel_lock:
         wb = _load_workbook()
         ws = wb['Users']
         for row in ws.iter_rows(min_row=2, values_only=True):
-            if row and row[0] == user_id:
+            if row and str(row[0]).strip() == str(user_id).strip():
                 return {
                     'UserID': row[0],
                     'Name': row[1],
                     'Email': row[2],
                     'Password': row[3],
-                    'Phone': row[4] if len(row) > 4 else '',
+                    'Phone': row[4] if len(row) > 4 else 'N/A',
                     'Role': row[5] if len(row) > 5 else 'User',
                     'PlateNumber': row[6] if len(row) > 6 else 'N/A',
                     'PapersUrl': row[7] if len(row) > 7 else 'N/A',

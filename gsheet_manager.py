@@ -207,11 +207,15 @@ def get_user_by_email(email):
     return None
 
 def get_user_by_id(user_id):
-    """Get user details by ID."""
-    records = _get_cached_data('users', lambda: _get_ws('Users').get_all_records())
-    for row in records:
-        if str(row.get('UserID', '')) == str(user_id):
-            return row
+    """Get user details by ID with data cleaning."""
+    try:
+        # Always use get_all_users() for cleaning and recovery logic
+        records = get_all_users()
+        for row in records:
+            if str(row.get('UserID', '')) == str(user_id):
+                return row
+    except Exception as e:
+        print(f"[ERROR] get_user_by_id failed: {e}")
     return None
 
 def register_user(name, email, password_hash, phone, role='User', plate_number='N/A', papers_url='N/A', license_url='N/A'):
