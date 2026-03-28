@@ -18,6 +18,8 @@ load_dotenv()
 db = None
 is_gsheet = False
 
+# Initialize connection
+global_db_error = None
 try:
     import gsheet_manager as gs
     gs._get_client()       # Test the connection — will raise if invalid
@@ -26,12 +28,16 @@ try:
     print("[INFO] Google Sheets connected successfully. Initializing structure...")
     db.init_gsheet()       # Migrate headers and create tabs if needed
 except Exception as e:
+    global_db_error = str(e)
     print(f"[WARN] Google Sheets unavailable: {e}")
     print("[INFO] Falling back to local Excel database. Initializing structure...")
-    import excel_manager as ex
-    db = ex
-    is_gsheet = False
-    db.init_excel()        # Migrate headers and create sheets if needed
+    try:
+        import excel_manager as ex
+        db = ex
+        is_gsheet = False
+        db.init_excel()        # Migrate headers and create sheets if needed
+    except Exception as ee:
+        print(f"[ERROR] Critical failure: Excel fallback also failing: {ee}")
 
 import email_service
 import qr_generator
@@ -61,19 +67,20 @@ def api_status():
     return jsonify({
         'status': 'OK' if is_gsheet else 'FALLBACK_MODE',
         'database': db_mode,
-        'service_account': gs.get_service_account_email() if is_gsheet else 'N/A',
+        'service_account': gs.get_service_account_email(),
         'sheets_initialized': True if db else False,
         'config_loaded': True if config.GSHEET_ID else False,
-        'spreadsheet_id': config.GSHEET_ID if is_gsheet else 'N/A',
+        'spreadsheet_id': config.GSHEET_ID,
         'counts': counts,
-        'last_error': error_info,
-        'version': '3.7.0',
+        'last_error': global_db_error if not is_gsheet else error_info,
+        'version': '3.8.0',
         'instructions': [
             '1. Ensure GSHEET_CREDENTIALS_JSON is set in Vercel Environment variables.',
-            '2. Ensure your Google Sheet is SHARED with the service_account email above as Editor.',
-            '3. Check that GSHEET_ID in your env is matching the ID of your spreadsheet.'
+            '2. Ensure your Google Sheet is SHARED with the service_account email ABOVE as Editor.',
+            '3. Check that Spreadsheet ID above matches your actual URL ID.'
         ]
     })
+
 
 
 
