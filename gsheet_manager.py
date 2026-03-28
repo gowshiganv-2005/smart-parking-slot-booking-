@@ -192,11 +192,15 @@ def init_gsheet():
 # ─── USER OPERATIONS ───────────────────────────────────────────
 
 def get_user_by_email(email):
-    """Get user details by email."""
+    """Get user details by email with data cleaning and cache awareness."""
     try:
-        records = _get_cached_data('users', lambda: _get_ws('Users').get_all_records())
+        if not email: return None
+        # Always use get_all_users() which has the data shift cleaning logic
+        records = get_all_users()
+        target = str(email).strip().lower()
         for row in records:
-            if str(row.get('Email', '')).lower() == str(email).lower():
+            actual = str(row.get('Email', '')).strip().lower()
+            if actual == target:
                 return row
     except Exception as e:
         print(f"[ERROR] get_user_by_email failed: {e}")
