@@ -45,10 +45,13 @@ def api_status():
     """Diagnostic route to check backend connection status."""
     return jsonify({
         'database': 'Google Sheets' if is_gsheet else 'Local Excel (Fallback)',
+        'service_account': gs.get_service_account_email() if is_gsheet else 'N/A',
         'sheets_initialized': True if db else False,
         'config_loaded': True if config.GSHEET_ID else False,
-        'version': '3.4.1'
+        'version': '3.5.0',
+        'instructions': 'Ensure your Google Sheet is SHARED with the service_account email above as Editor.'
     })
+
 
 
 # ─── SESSION CONFIGURATION (Long-term stability) ────────────────

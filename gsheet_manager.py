@@ -552,9 +552,27 @@ def get_dashboard_stats():
         }
     return _get_cached_data('dashboard_stats', fetch)
 
-def get_full_dashboard_data():
-    """Get all data needed for admin dashboard in one go. Using sequential fetch to avoid ThreadPoolExecutor issues on Vercel."""
+def get_service_account_email():
+    """Get the email of the service account being used."""
     try:
+        import json
+        if config.GSHEET_CREDENTIALS_JSON:
+            creds = json.loads(config.GSHEET_CREDENTIALS_JSON)
+            return creds.get('client_email')
+        elif os.path.exists(config.GSHEET_CREDENTIALS_FILE):
+            with open(config.GSHEET_CREDENTIALS_FILE, 'r') as f:
+                creds = json.load(f)
+                return creds.get('client_email')
+    except:
+        pass
+    return "Unknown"
+
+def get_full_dashboard_data():
+    """Get all data needed for admin dashboard in one go. BYPASSES CACHE to ensure fresh data."""
+    try:
+        # Invalidate cache before fetch to ensure we get latest from GSheets
+        _invalidate('users', 'slots', 'bookings', 'stats', 'dashboard_stats')
+        
         users = get_all_users()
         slots = get_all_slots()
         bookings = get_all_bookings()
@@ -582,6 +600,7 @@ def get_full_dashboard_data():
             'bookings': [],
             'error': str(e)
         }
+
 
 def log_activity(user_id, name, email, action):
     """Log an activity."""
