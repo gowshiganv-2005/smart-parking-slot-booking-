@@ -118,9 +118,19 @@ def _get_client():
             return _sh
         # Check if credential JSON is provided in Environment Variables first
         if config.GSHEET_CREDENTIALS_JSON:
-            import json
-            info = json.loads(config.GSHEET_CREDENTIALS_JSON)
-            credentials = Credentials.from_service_account_info(info, scopes=SCOPES)
+            # Robustly parse JSON from environment string (handles extra quotes from Vercel/Render)
+            creds_json = config.GSHEET_CREDENTIALS_JSON.strip()
+            if (creds_json.startswith("'") and creds_json.endswith("'")) or \
+               (creds_json.startswith('"') and creds_json.endswith('"')):
+                creds_json = creds_json[1:-1]
+                
+            try:
+                creds = json.loads(creds_json)
+            except Exception as je:
+                print(f"[ERROR] JSON creds parsing failed: {je}")
+                raise je
+                
+            _sh = gspread.service_account_from_dict(creds).open_by_key(config.GSHEET_ID)
         else:
             # Fallback to local file - check multiple possible paths
             possible_paths = [
