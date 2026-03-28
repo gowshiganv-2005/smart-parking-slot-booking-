@@ -23,13 +23,15 @@ try:
     gs._get_client()       # Test the connection — will raise if invalid
     db = gs
     is_gsheet = True
-    print("[INFO] Google Sheets connected successfully.")
+    print("[INFO] Google Sheets connected successfully. Initializing structure...")
+    db.init_gsheet()       # Migrate headers and create tabs if needed
 except Exception as e:
     print(f"[WARN] Google Sheets unavailable: {e}")
-    print("[INFO] Falling back to local Excel database.")
+    print("[INFO] Falling back to local Excel database. Initializing structure...")
     import excel_manager as ex
     db = ex
     is_gsheet = False
+    db.init_excel()        # Migrate headers and create sheets if needed
 
 import email_service
 import qr_generator
