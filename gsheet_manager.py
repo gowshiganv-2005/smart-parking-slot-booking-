@@ -1,4 +1,4 @@
-cc"""
+"""
 Google Sheets Database Manager for Smart Parking System
 Handles all CRUD operations using Google Sheets as the primary database.
 """
