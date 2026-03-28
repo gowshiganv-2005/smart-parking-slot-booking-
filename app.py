@@ -345,6 +345,9 @@ def api_login():
             })
 
         # Second check: Email-based user lookup
+        # Invalidate users cache first to ensure freshest data (critical for serverless)
+        if hasattr(db, '_invalidate'):
+            db._invalidate('users')
         user = db.get_user_by_email(email)
         if not user:
             print(f"[AUTH] Login failed: User {email} not found")
