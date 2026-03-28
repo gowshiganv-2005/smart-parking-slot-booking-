@@ -24,6 +24,22 @@
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 
+    {% if is_fallback %}
+    <!-- DATABASE FALLBACK ALERT -->
+    <div style="background: rgba(234, 179, 8, 0.1); border: 1px solid #f97316; border-radius: 12px; margin: 20px; padding: 20px; display: flex; align-items: center; gap: 15px; color: #fff; backdrop-filter: blur(10px); z-index: 1000; position: relative;" id="fallbackAlert">
+        <div style="font-size: 32px;">⚠️</div>
+        <div style="flex: 1;">
+            <h3 style="color: #f97316; margin: 0 0 5px 0; font-size: 18px;">Database Fallback Mode (1 User Bug)</h3>
+            <p style="font-size: 14px; margin: 0; opacity: 0.9;">
+                The website could not connect to your <strong>Google Sheet</strong> and is using a temporary file. 
+                <strong>To Fix:</strong> Visit <a href="/api/status" style="color: #3b82f6; text-decoration: underline;">/api/status</a> and follow the instructions to share your sheet!
+            </p>
+        </div>
+        <button onclick="this.parentElement.remove()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #9ca3af;">✕</button>
+    </div>
+    {% endif %}
+
+
     <div class="dashboard">
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">

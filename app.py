@@ -44,6 +44,9 @@ app.secret_key = config.SECRET_KEY
 def api_status():
     """Advanced Diagnostic route to check backend health and data counts."""
     counts = {}
+    db_mode = 'Google Sheets' if is_gsheet else 'Local Excel (Fallback)'
+    error_info = None
+    
     try:
         # Get counts for verification
         counts = {
@@ -52,17 +55,26 @@ def api_status():
             'bookings': len(db.get_all_bookings())
         }
     except Exception as e:
-        counts = {'error': str(e)}
+        error_info = str(e)
+        counts = {'error': error_info}
     
     return jsonify({
-        'database': 'Google Sheets' if is_gsheet else 'Local Excel (Fallback)',
+        'status': 'OK' if is_gsheet else 'FALLBACK_MODE',
+        'database': db_mode,
         'service_account': gs.get_service_account_email() if is_gsheet else 'N/A',
         'sheets_initialized': True if db else False,
         'config_loaded': True if config.GSHEET_ID else False,
+        'spreadsheet_id': config.GSHEET_ID if is_gsheet else 'N/A',
         'counts': counts,
-        'version': '3.6.0',
-        'instructions': 'Ensure "counts" matches your sheet rows. If users=1, check for empty columns or headers in GSheet.'
+        'last_error': error_info,
+        'version': '3.7.0',
+        'instructions': [
+            '1. Ensure GSHEET_CREDENTIALS_JSON is set in Vercel Environment variables.',
+            '2. Ensure your Google Sheet is SHARED with the service_account email above as Editor.',
+            '3. Check that GSHEET_ID in your env is matching the ID of your spreadsheet.'
+        ]
     })
+
 
 
 
@@ -168,7 +180,21 @@ def admin_login_page():
 @app.route('/admin/dashboard')
 @admin_required
 def admin_dashboard():
-    return render_template('admin_dashboard.html')
+    """Main Admin Management Panel."""
+    try:
+        data = db.get_full_dashboard_data()
+        return render_template('admin_dashboard.html', 
+                               stats=data.get('stats'), 
+                               slots=data.get('slots'), 
+                               bookings=data.get('bookings'),
+                               is_fallback=(not is_gsheet))
+    except Exception as e:
+        print(f"[ERROR] Admin dashboard error: {e}")
+        # If fetch fails completely, show an empty but safe state
+        return render_template('admin_dashboard.html', 
+                               stats={'total_users':0, 'total_slots':0, 'available_slots':0, 'booked_slots':0, 'total_bookings':0, 'parked_vehicles':0},
+                               slots=[], bookings=[], is_fallback=True)
+
 
 
 @app.route('/parking-access')
