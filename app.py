@@ -42,15 +42,28 @@ app.secret_key = config.SECRET_KEY
 
 @app.route('/api/status')
 def api_status():
-    """Diagnostic route to check backend connection status."""
+    """Advanced Diagnostic route to check backend health and data counts."""
+    counts = {}
+    try:
+        # Get counts for verification
+        counts = {
+            'users': len(db.get_all_users()),
+            'slots': len(db.get_all_slots()),
+            'bookings': len(db.get_all_bookings())
+        }
+    except Exception as e:
+        counts = {'error': str(e)}
+    
     return jsonify({
         'database': 'Google Sheets' if is_gsheet else 'Local Excel (Fallback)',
         'service_account': gs.get_service_account_email() if is_gsheet else 'N/A',
         'sheets_initialized': True if db else False,
         'config_loaded': True if config.GSHEET_ID else False,
-        'version': '3.5.0',
-        'instructions': 'Ensure your Google Sheet is SHARED with the service_account email above as Editor.'
+        'counts': counts,
+        'version': '3.6.0',
+        'instructions': 'Ensure "counts" matches your sheet rows. If users=1, check for empty columns or headers in GSheet.'
     })
+
 
 
 

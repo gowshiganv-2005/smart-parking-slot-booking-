@@ -257,18 +257,30 @@ def register_user(name, email, password_hash, phone, role='User', plate_number='
         'LastActive': 'N/A'
     }
 
-def _get_flexible_key(row, key_variations, default='N/A'):
-    """Search for data using multiple possible key names (handling case/spaces)."""
+def _get_flexible_key(row, key_variations, default=None):
+    """Search for data using multiple possible key names. Returns default if not found or empty."""
     if not row: return default
+    # Try exact key variations
     for k in key_variations:
-        if k in row and row[k] and str(row[k]).strip() != '':
-            return row[k]
-    # Fallback to similar looking keys if exact match not found
+        if k in row:
+            val = row[k]
+            # Consider non-empty values (0 is a valid ID sometimes, so check vs empty string)
+            if val is not None and str(val).strip() != '':
+                return val
+                
+    # Try case-insensitive and space-insensitive matches
     for rk, rv in row.items():
-        if any(v.lower().replace(' ', '') == rk.lower().replace(' ', '') for v in key_variations):
-            if rv and str(rv).strip() != '':
-                return rv
+        if not rk or str(rk).strip() == '': continue
+        clean_rk = str(rk).lower().replace(' ', '').replace('_', '')
+        for v in key_variations:
+            clean_v = str(v).lower().replace(' ', '').replace('_', '')
+            if clean_rk == clean_v:
+                if rv is not None and str(rv).strip() != '':
+                    return rv
+                    
+    # Ultimate fallback: check by position if it's a list (not possible with get_all_records)
     return default
+
 
 def _clean_data_row(row, schema_type):
     """Normalize and clean a data row regardless of header shifts or renaming."""
@@ -420,6 +432,9 @@ def update_slot_status(slot_id, status):
     return False
 
 # ─── BOOKING OPERATIONS ────────────────────────────────────────
+
+# Replaced by global status in app.py
+
 
 def create_booking(user_id, slot_id):
     """Book a parking slot."""
