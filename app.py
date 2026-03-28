@@ -48,37 +48,23 @@ app.secret_key = config.SECRET_KEY
 
 @app.route('/api/status')
 def api_status():
-    """Advanced Diagnostic route to check backend health and data counts."""
-    counts = {}
+    """Ultimate Troubleshooting route to fix the '1 User Bug'."""
     db_mode = 'Google Sheets' if is_gsheet else 'Local Excel (Fallback)'
-    error_info = None
-    
-    try:
-        # Get counts for verification
-        counts = {
-            'users': len(db.get_all_users()),
-            'slots': len(db.get_all_slots()),
-            'bookings': len(db.get_all_bookings())
-        }
-    except Exception as e:
-        error_info = str(e)
-        counts = {'error': error_info}
-    
     return jsonify({
-        'status': 'OK' if is_gsheet else 'FALLBACK_MODE',
+        'status': 'OK' if is_gsheet else 'ACTION_REQUIRED',
         'database': db_mode,
+        'current_error': global_db_error if not is_gsheet else None,
         'service_account': gs.get_service_account_email(),
-        'sheets_initialized': True if db else False,
-        'config_loaded': True if config.GSHEET_ID else False,
         'spreadsheet_id': config.GSHEET_ID,
-        'counts': counts,
-        'last_error': global_db_error if not is_gsheet else error_info,
-        'version': '3.8.0',
-        'instructions': [
-            '1. Ensure GSHEET_CREDENTIALS_JSON is set in Vercel Environment variables.',
-            '2. Ensure your Google Sheet is SHARED with the service_account email ABOVE as Editor.',
-            '3. Check that Spreadsheet ID above matches your actual URL ID.'
-        ]
+        'troubleshooting_steps': [
+            '1. Your current key is CORRUPTED (Invalid Signature). You MUST generate a NEW one.',
+            '2. Go to: https://console.cloud.google.com/iam-admin/serviceaccounts',
+            '3. Find your Service Account, go to "Keys" -> "Add Key" -> "Create New Key" -> "JSON".',
+            '4. Open the new file, copy EVERYTHING, and paste it into Your Vercel ENV: GSHEET_CREDENTIALS_JSON',
+            '5. Restart your Vercel deployment.'
+        ],
+        'counts': {'users': len(db.get_all_users()) if db else 0},
+        'version': '3.9.0'
     })
 
 
