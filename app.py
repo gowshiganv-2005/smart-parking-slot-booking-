@@ -275,17 +275,11 @@ def api_register():
                 saved_to_disk = True
                 print(f"[REG] Files saved to disk.")
         except OSError:
-            # Fallback: store as base64 data URIs (works on read-only deployments like Vercel)
-            print("[REG] Disk save failed (read-only FS). Using base64 fallback.")
-            vehicle_papers.stream.seek(0)
-            driver_license.stream.seek(0)
-            papers_b64 = base64.b64encode(vehicle_papers.read()).decode('utf-8')
-            license_b64 = base64.b64encode(driver_license.read()).decode('utf-8')
-            papers_ext = vehicle_papers.filename.rsplit('.', 1)[-1].lower() if '.' in vehicle_papers.filename else 'pdf'
-            license_ext = driver_license.filename.rsplit('.', 1)[-1].lower() if '.' in driver_license.filename else 'pdf'
-            mime_map = {'pdf': 'application/pdf', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png'}
-            papers_url = f"data:{mime_map.get(papers_ext, 'application/octet-stream')};base64,{papers_b64}"
-            license_url = f"data:{mime_map.get(license_ext, 'application/octet-stream')};base64,{license_b64}"
+            # Fallback for read-only deployments: store filename as reference
+            # (Google Sheets has a 50K char/cell limit, so base64 won't fit)
+            print("[REG] Disk save failed (read-only FS). Storing filename references.")
+            papers_url = f"[Uploaded] {vehicle_papers.filename}"
+            license_url = f"[Uploaded] {driver_license.filename}"
 
         # Step 5: Validate role
         if role not in ['User', 'Admin']:
