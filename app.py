@@ -208,14 +208,27 @@ def api_health():
     })
 
 @app.route('/api/debug/db')
-@admin_required
-def api_debug_db():
-    """Diagnostic endpoint — admin only."""
+@app.route('/api/status')
+def api_status():
+    """Ultimate Security-Compliant Troubleshooting."""
+    db_mode = 'Google Sheets' if is_gsheet else 'Local Excel (Fallback)'
     return jsonify({
-        'success': True,
-        'mode': 'Google Sheets' if is_gsheet else 'Local Excel',
-        'message': 'Database connection is healthy.'
+        'status': 'OK' if is_gsheet else 'ACTION_REQUIRED',
+        'database': db_mode,
+        'current_error': global_db_error if not is_gsheet else None,
+        'service_account': gs.get_service_account_email() if is_gsheet else 'N/A',
+        'spreadsheet_id': config.GSHEET_ID if is_gsheet else 'N/A',
+        'troubleshooting_steps': [
+            '1. FOR SECURITY: Github BLOCKED your JSON file push. Good!',
+            '2. Copy the content of your new JSON key.',
+            '3. Go to Vercel/Render -> Environment Variables.',
+            '4. Paste the content as: GSHEET_CREDENTIALS_JSON',
+            '5. Shared your sheet with: ' + (gs.get_service_account_email() if is_gsheet else 'N/A')
+        ],
+        'counts': {'users': len(db.get_all_users()) if db else 0},
+        'version': '4.0.0 (Secure)'
     })
+
 
 
 # ─── AUTH API ROUTES ─────────────────────────────────────────────

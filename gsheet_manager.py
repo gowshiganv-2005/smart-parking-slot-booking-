@@ -118,9 +118,23 @@ def _get_client():
             return _sh
         # Check if credential JSON is provided in Environment Variables first
         if config.GSHEET_CREDENTIALS_JSON:
-            import json
-            info = json.loads(config.GSHEET_CREDENTIALS_JSON)
-            credentials = Credentials.from_service_account_info(info, scopes=SCOPES)
+            try:
+                # Robustly parse JSON from environment string (handles extra quotes)
+                creds_json = config.GSHEET_CREDENTIALS_JSON.strip()
+                if (creds_json.startswith("'") and creds_json.endswith("'")) or \
+                   (creds_json.startswith('"') and creds_json.endswith('"')):
+                    creds_json = creds_json[1:-1]
+                
+                creds = json.loads(creds_json)
+                # Aggressive cleanup of private_key (handles Vercel's \n vs \\n issues)
+                if 'private_key' in creds:
+                    creds['private_key'] = creds['private_key'].replace('\\n', '\n')
+                
+                _gc = gspread.service_account_from_dict(creds)
+                _sh = _gc.open_by_key(config.GSHEET_ID)
+            except Exception as e:
+                print(f"[ERROR] Failed to authorize via GSHEET_CREDENTIALS_JSON: {e}")
+                raise e
         else:
             # Fallback to local file - check multiple possible paths
             possible_paths = [
@@ -140,16 +154,8 @@ def _get_client():
                 print(f"[ERROR] {msg}")
                 raise FileNotFoundError(msg)
                 
-            credentials = Credentials.from_service_account_file(
-                found_path,
-                scopes=SCOPES
-            )
-        _gc = gspread.authorize(credentials)
-        try:
+            _gc = gspread.service_account(filename=found_path)
             _sh = _gc.open_by_key(config.GSHEET_ID)
-        except Exception as e:
-            print(f"[ERROR] Could not open Google Sheet {config.GSHEET_ID}: {e}")
-            raise e
     return _sh
 
 def init_gsheet():
@@ -243,18 +249,29 @@ def register_user(name, email, password_hash, phone, role='User', plate_number='
         'LastActive': 'N/A'
     }
 
-def _get_flexible_key(row, key_variations, default='N/A'):
-    """Search for data using multiple possible key names (handling case/spaces)."""
+def _get_flexible_key(row, key_variations, default=None):
+    """Search for data using multiple possible key names. Returns default if not found or empty."""
     if not row: return default
+    # Try exact key variations
     for k in key_variations:
-        if k in row and row[k] and str(row[k]).strip() != '':
-            return row[k]
-    # Fallback to similar looking keys if exact match not found
+        if k in row:
+            val = row[k]
+            # Consider non-empty values (0 is a valid ID sometimes, so check vs empty string)
+            if val is not None and str(val).strip() != '':
+                return val
+                
+    # Try case-insensitive and space-insensitive matches
     for rk, rv in row.items():
-        if any(v.lower().replace(' ', '') == rk.lower().replace(' ', '') for v in key_variations):
-            if rv and str(rv).strip() != '':
-                return rv
+        if not rk or str(rk).strip() == '': continue
+        clean_rk = str(rk).lower().replace(' ', '').replace('_', '')
+        for v in key_variations:
+            clean_v = str(v).lower().replace(' ', '').replace('_', '')
+            if clean_rk == clean_v:
+                if rv is not None and str(rv).strip() != '':
+                    return rv
+                    
     return default
+
 
 def _clean_data_row(row, schema_type):
     """Normalize and clean a data row regardless of header shifts or renaming."""

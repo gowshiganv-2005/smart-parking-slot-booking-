@@ -31,3 +31,6 @@ Thumbs.db
 
 # Uploads
 static/uploads/
+
+gsheet_credentials.json
+aqueous-cortex-482804-k1-88c2cdf0fee4.json
