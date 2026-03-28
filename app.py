@@ -362,6 +362,7 @@ def api_login():
         session['user_id'] = user['UserID']
         session['user_name'] = user['Name']
         session['user_email'] = user['Email']
+        session.permanent = True
         
         user_role = user.get('Role', 'User')
         session['user_role'] = user_role
