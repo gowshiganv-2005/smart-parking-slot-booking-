@@ -243,32 +243,95 @@ def register_user(name, email, password_hash, phone, role='User', plate_number='
         'LastActive': 'N/A'
     }
 
+def _clean_data_row(row, schema_type):
+    """Normalize and clean a data row regardless of header shifts."""
+    if not row: return None
+    
+    # Define primary mappings to handle shifts
+    # (If 'UserID' key is missing, look at other column indices)
+    if schema_type == 'users':
+        uid = row.get('UserID') or row.get('User ID')
+        if not uid or uid == '#':
+            # Try to recover from shift (e.g. if Name contains numeric ID)
+            name_val = str(row.get('Name', ''))
+            if name_val.isnumeric() and len(name_val) > 10:
+                return {
+                    'UserID': name_val,
+                    'Name': row.get('Email', 'Unknown'),
+                    'Email': row.get('Password', 'Unknown'),
+                    'Password': row.get('Placeholder', 'N/A'),
+                    'Phone': row.get('Role', 'N/A'),
+                    'Role': row.get('PlateNumber', 'User'),
+                    'PlateNumber': row.get('PapersUrl', 'N/A'),
+                    'PapersUrl': row.get('LicenseUrl', 'N/A'),
+                    'LicenseUrl': row.get('LastActive', 'N/A'),
+                    'LastActive': 'N/A'
+                }
+        return row
+    
+    if schema_type == 'slots':
+        sid = row.get('SlotID')
+        if not sid:
+            # Fallback for older or shifted headers
+            return {
+                'SlotID': row.get('SlotID') or list(row.values())[0],
+                'SlotNumber': row.get('SlotNumber') or list(row.values())[1],
+                'Status': row.get('Status') or list(row.values())[2]
+            }
+        return row
+        
+    if schema_type == 'bookings':
+        bid = row.get('BookingID')
+        if not bid:
+            # Fallback for shifted headers
+            return {
+                'BookingID': row.get('BookingID') or list(row.values())[0],
+                'UserID': row.get('UserID') or list(row.values())[1],
+                'SlotID': row.get('SlotID') or list(row.values())[2],
+                'SlotNumber': row.get('SlotNumber') or list(row.values())[3],
+                'Date': row.get('Date') or list(row.values())[4],
+                'Time': row.get('Time') or list(row.values())[5],
+                'UserName': row.get('UserName') or list(row.values())[6],
+                'UserEmail': row.get('UserEmail') or list(row.values())[7],
+                'UserStatus': row.get('UserStatus') or list(row.values())[8],
+                'LoginTime': row.get('LoginTime') or list(row.values())[9],
+                'LogoutTime': row.get('LogoutTime') or list(row.values())[10]
+            }
+        return row
+        
+    return row
+
 def get_all_users():
-    """Get all registered users with data cleaning for shifted rows."""
-    def fetch():
-        try:
-            ws = _get_ws('Users')
-            records = ws.get_all_records()
-            clean_records = []
-            for r in records:
-                # Check for data shift bug (UserID is missing or shifted)
-                if not r.get('UserID') or r.get('UserID') == '#':
-                    # Attempt to recover by looking at other fields (Name might contain ID)
-                    if str(r.get('Name', '')).isnumeric() and len(str(r.get('Name', ''))) > 10:
-                        r['UserID'] = r['Name']
-                        r['Name'] = r.get('Email', 'Unknown')
-                        r['Email'] = r.get('Password', 'Unknown')
-                        r['Phone'] = r.get('Role', 'N/A')
-                        r['Role'] = r.get('LastActive', 'User')
-                
-                # Filter out rows that are clearly empty or just placeholders
-                if r.get('UserID') and str(r.get('UserID')).strip() != '' and str(r.get('UserID')) != '#':
-                    clean_records.append(r)
-            return clean_records
-        except Exception as e:
-            print(f"[ERROR] fetch all users failed: {e}")
-            return []
-    return _get_cached_data('users', fetch)
+    """Get all registered users with data cleaning."""
+    try:
+        ws = _get_ws('Users')
+        records = _get_cached_data('users', lambda: ws.get_all_records())
+        return [r for r in [_clean_data_row(row, 'users') for row in records] if r and r.get('UserID')]
+    except Exception as e:
+        print(f"[ERROR] get_all_users failed: {e}")
+        return []
+
+def get_all_slots():
+    """Get all parking slots with data cleaning."""
+    try:
+        ws = _get_ws('ParkingSlots')
+        records = _get_cached_data('slots', lambda: ws.get_all_records())
+        return [_clean_data_row(row, 'slots') for row in records]
+    except Exception as e:
+        print(f"[ERROR] get_all_slots failed: {e}")
+        return []
+
+def get_all_bookings():
+    """Get all bookings with data cleaning."""
+    try:
+        ws = _get_ws('Bookings')
+        records = _get_cached_data('bookings', lambda: ws.get_all_records())
+        return [_clean_data_row(row, 'bookings') for row in records]
+    except Exception as e:
+        print(f"[ERROR] get_all_bookings failed: {e}")
+        return []
+
+
 
 def delete_user(user_id):
     """Delete a user account."""
@@ -298,13 +361,8 @@ def update_user_activity(user_id):
 
 # ─── SLOT OPERATIONS ───────────────────────────────────────────
 
-def get_all_slots():
-    """Get all parking slots."""
-    try:
-        return _get_cached_data('slots', lambda: _get_ws('ParkingSlots').get_all_records())
-    except Exception as e:
-        print(f"[ERROR] get_all_slots failed: {e}")
-        return []
+# Replaced by global cleaner above
+
 
 def add_slot(slot_number):
     """Add a new parking slot."""
@@ -414,8 +472,8 @@ def create_booking(user_id, slot_id):
         return None
 
 def get_booking_by_id(booking_id):
-    """Get booking by ID."""
-    records = _get_cached_data('bookings', lambda: _get_ws('Bookings').get_all_records())
+    """Get booking by ID with cleaning."""
+    records = get_all_bookings()
     for row in records:
         if str(row.get('BookingID', '')) == str(booking_id):
             return row
@@ -451,13 +509,8 @@ def cancel_booking(booking_id):
             return True
     return False
 
-def get_all_bookings():
-    """Get all bookings."""
-    try:
-        return _get_cached_data('bookings', lambda: _get_ws('Bookings').get_all_records())
-    except Exception as e:
-        print(f"[ERROR] get_all_bookings failed: {e}")
-        return []
+# Moved above ^
+
 
 def get_user_bookings(user_id):
     """Get bookings for a specific user."""
