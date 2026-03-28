@@ -179,15 +179,19 @@ def init_gsheet():
                 print(f"[INFO] Updating headers for sheet: {title}")
                 ws.update('A1', [headers])
 
-    # Initialize default slots if none exist
-    ws_slots = sh.worksheet('ParkingSlots')
-    if len(ws_slots.get_all_values()) <= 1:
+    # Ensure default data is present (e.g., if sheet was manually created but empty)
+    ws_slots = _get_ws('ParkingSlots')
+    # Check if there are any rows below the header
+    records = ws_slots.get_all_records()
+    if not records:
+        print(f"[INFO] Seeding default slots to ParkingSlots...")
         slots_data = []
         for i in range(1, config.TOTAL_SLOTS + 1):
             slot_id = int(time.time() * 1000) + i
-            slots_data.append([slot_id, f"P-{i:02d}", "Available"])
+            slots_data.append([slot_id, f"P-{i:03d}", "Available"])
         ws_slots.append_rows(slots_data)
-        print(f"[INFO] Initialized {config.TOTAL_SLOTS} default slots.")
+        _invalidate('slots', 'stats')
+
 
 # ─── USER OPERATIONS ───────────────────────────────────────────
 
@@ -483,40 +487,29 @@ def get_dashboard_stats():
     return _get_cached_data('dashboard_stats', fetch)
 
 def get_full_dashboard_data():
-    """Get all data needed for admin dashboard in one go using parallel fetching."""
-    from concurrent.futures import ThreadPoolExecutor
-    
-    def fetch_all():
-        with ThreadPoolExecutor(max_workers=3) as executor:
-            future_users = executor.submit(get_all_users)
-            future_slots = executor.submit(get_all_slots)
-            future_bookings = executor.submit(get_all_bookings)
-            
-            users = future_users.result()
-            slots = future_slots.result()
-            bookings = future_bookings.result()
-            
-            available = len([s for s in slots if s['Status'] == 'Available'])
-            parked = len([b for b in bookings if b['UserStatus'] == 'Logged In'])
-            
-            return {
-                'stats': {
-                    'total_users': len(users),
-                    'total_slots': len(slots),
-                    'available_slots': available,
-                    'booked_slots': len(slots) - available,
-                    'total_bookings': len(bookings),
-                    'parked_vehicles': parked
-                },
-                'slots': slots,
-                'bookings': bookings
-            }
-            
+    """Get all data needed for admin dashboard in one go. Using sequential fetch to avoid ThreadPoolExecutor issues on Vercel."""
     try:
-        return _get_cached_data('full_dashboard', fetch_all)
+        users = get_all_users()
+        slots = get_all_slots()
+        bookings = get_all_bookings()
+        
+        available = len([s for s in slots if s.get('Status') == 'Available'])
+        parked = len([b for b in bookings if b.get('UserStatus') in ['Logged In', 'Checked In']])
+        
+        return {
+            'stats': {
+                'total_users': len(users),
+                'total_slots': len(slots),
+                'available_slots': available,
+                'booked_slots': len(slots) - available if len(slots) > 0 else 0,
+                'total_bookings': len(bookings),
+                'parked_vehicles': parked
+            },
+            'slots': slots,
+            'bookings': bookings
+        }
     except Exception as e:
         print(f"[ERROR] Full dashboard fetch failed: {e}")
-        # Return empty data if fetch fails to avoid crashing
         return {
             'stats': {'total_users': 0, 'total_slots': 0, 'available_slots': 0, 'booked_slots': 0, 'total_bookings': 0, 'parked_vehicles': 0},
             'slots': [],

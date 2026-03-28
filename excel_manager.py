@@ -41,8 +41,11 @@ def init_excel():
 
             # Default slots
             if title == 'ParkingSlots':
-                for j in range(1, config.TOTAL_SLOTS + 1):
-                    ws.append([j, f'P-{j:03d}', 'Available'])
+                # Check if worksheet only has header
+                if ws.max_row <= 1:
+                    print(f"[INFO] Seeding default slots to {title}...")
+                    for j in range(1, config.TOTAL_SLOTS + 1):
+                        ws.append([j, f'P-{j:03d}', 'Available'])
             
             # Default users (demo)
             if title == 'Users':
@@ -67,6 +70,13 @@ def init_excel():
                 # Update header row while preserving other data
                 for col_idx, header in enumerate(headers, 1):
                     ws.cell(row=1, column=col_idx, value=header)
+                changed = True
+            
+            # Seed default slots if none exist after header check
+            if title == 'ParkingSlots' and ws.max_row <= 1:
+                print(f"[INFO] Seeding default slots to {title} during migration...")
+                for j in range(1, config.TOTAL_SLOTS + 1):
+                    ws.append([j, f'P-{j:03d}', 'Available'])
                 changed = True
     
     if changed:
