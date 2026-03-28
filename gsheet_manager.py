@@ -243,63 +243,72 @@ def register_user(name, email, password_hash, phone, role='User', plate_number='
         'LastActive': 'N/A'
     }
 
+def _get_flexible_key(row, key_variations, default='N/A'):
+    """Search for data using multiple possible key names (handling case/spaces)."""
+    if not row: return default
+    for k in key_variations:
+        if k in row and row[k] and str(row[k]).strip() != '':
+            return row[k]
+    # Fallback to similar looking keys if exact match not found
+    for rk, rv in row.items():
+        if any(v.lower().replace(' ', '') == rk.lower().replace(' ', '') for v in key_variations):
+            if rv and str(rv).strip() != '':
+                return rv
+    return default
+
 def _clean_data_row(row, schema_type):
-    """Normalize and clean a data row regardless of header shifts."""
+    """Normalize and clean a data row regardless of header shifts or renaming."""
     if not row: return None
     
     # Define primary mappings to handle shifts
-    # (If 'UserID' key is missing, look at other column indices)
     if schema_type == 'users':
-        uid = row.get('UserID') or row.get('User ID')
-        if not uid or uid == '#':
-            # Try to recover from shift (e.g. if Name contains numeric ID)
-            name_val = str(row.get('Name', ''))
-            if name_val.isnumeric() and len(name_val) > 10:
-                return {
-                    'UserID': name_val,
-                    'Name': row.get('Email', 'Unknown'),
-                    'Email': row.get('Password', 'Unknown'),
-                    'Password': row.get('Placeholder', 'N/A'),
-                    'Phone': row.get('Role', 'N/A'),
-                    'Role': row.get('PlateNumber', 'User'),
-                    'PlateNumber': row.get('PapersUrl', 'N/A'),
-                    'PapersUrl': row.get('LicenseUrl', 'N/A'),
-                    'LicenseUrl': row.get('LastActive', 'N/A'),
-                    'LastActive': 'N/A'
-                }
-        return row
+        uid = _get_flexible_key(row, ['UserID', 'User ID', 'uid', 'ID'])
+        if not uid or str(uid) == '#':
+            # Attempt to recover from a shift where ID moved into another column
+            if str(row.get('Name', '')).isnumeric() and len(str(row.get('Name', ''))) > 10:
+                uid = row.get('Name')
+            else:
+                return None # Drop truly bad rows
+        
+        # Build normalized output based on best-guess columns
+        clean = {
+            'UserID': uid,
+            'Name': _get_flexible_key(row, ['Name', 'Full Name']),
+            'Email': _get_flexible_key(row, ['Email', 'Email Address']),
+            'Password': _get_flexible_key(row, ['Password'], ''),
+            'Phone': _get_flexible_key(row, ['Phone', 'PhoneNumber', 'Phone Number', 'PhoneNo']),
+            'Role': _get_flexible_key(row, ['Role', 'UserType', 'AccountType'], 'User'),
+            'PlateNumber': _get_flexible_key(row, ['PlateNumber', 'NumberPlate', 'VehiclePlate', 'Plate', 'Vehicle Number Plate']),
+            'PapersUrl': _get_flexible_key(row, ['PapersUrl', 'VehiclePapers', 'VehicleRegistrationPapers']),
+            'LicenseUrl': _get_flexible_key(row, ['LicenseUrl', 'LicensePaper', 'DriverIdentity', 'Driver License']),
+            'LastActive': _get_flexible_key(row, ['LastActive', 'Last Active', 'LastUsed'], 'N/A')
+        }
+        return clean
     
     if schema_type == 'slots':
-        sid = row.get('SlotID')
-        if not sid:
-            # Fallback for older or shifted headers
-            return {
-                'SlotID': row.get('SlotID') or list(row.values())[0],
-                'SlotNumber': row.get('SlotNumber') or list(row.values())[1],
-                'Status': row.get('Status') or list(row.values())[2]
-            }
-        return row
+        return {
+            'SlotID': _get_flexible_key(row, ['SlotID', 'Slot ID']),
+            'SlotNumber': _get_flexible_key(row, ['SlotNumber', 'Slot Number', 'Slot No']),
+            'Status': _get_flexible_key(row, ['Status', 'Availability'], 'Available')
+        }
         
     if schema_type == 'bookings':
-        bid = row.get('BookingID')
-        if not bid:
-            # Fallback for shifted headers
-            return {
-                'BookingID': row.get('BookingID') or list(row.values())[0],
-                'UserID': row.get('UserID') or list(row.values())[1],
-                'SlotID': row.get('SlotID') or list(row.values())[2],
-                'SlotNumber': row.get('SlotNumber') or list(row.values())[3],
-                'Date': row.get('Date') or list(row.values())[4],
-                'Time': row.get('Time') or list(row.values())[5],
-                'UserName': row.get('UserName') or list(row.values())[6],
-                'UserEmail': row.get('UserEmail') or list(row.values())[7],
-                'UserStatus': row.get('UserStatus') or list(row.values())[8],
-                'LoginTime': row.get('LoginTime') or list(row.values())[9],
-                'LogoutTime': row.get('LogoutTime') or list(row.values())[10]
-            }
-        return row
+        return {
+            'BookingID': _get_flexible_key(row, ['BookingID', 'Booking ID']),
+            'UserID': _get_flexible_key(row, ['UserID', 'User ID']),
+            'SlotID': _get_flexible_key(row, ['SlotID', 'Slot ID']),
+            'SlotNumber': _get_flexible_key(row, ['SlotNumber', 'Slot Number']),
+            'Date': _get_flexible_key(row, ['Date', 'BookingDate']),
+            'Time': _get_flexible_key(row, ['Time', 'BookingTime']),
+            'UserName': _get_flexible_key(row, ['UserName', 'User Name']),
+            'UserEmail': _get_flexible_key(row, ['UserEmail', 'User Email']),
+            'UserStatus': _get_flexible_key(row, ['UserStatus', 'Status', 'BookingStatus']),
+            'LoginTime': _get_flexible_key(row, ['LoginTime', 'CheckInTime']),
+            'LogoutTime': _get_flexible_key(row, ['LogoutTime', 'CheckOutTime'])
+        }
         
     return row
+
 
 def get_all_users():
     """Get all registered users with data cleaning."""
