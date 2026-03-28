@@ -187,7 +187,9 @@ def admin_dashboard():
                                stats=data.get('stats'), 
                                slots=data.get('slots'), 
                                bookings=data.get('bookings'),
-                               is_fallback=(not is_gsheet))
+                               is_fallback=(not is_gsheet),
+                               spreadsheet_id=config.GSHEET_ID)
+
     except Exception as e:
         print(f"[ERROR] Admin dashboard error: {e}")
         # If fetch fails completely, show an empty but safe state

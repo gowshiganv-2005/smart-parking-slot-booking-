@@ -31,9 +31,10 @@
         <div style="flex: 1;">
             <h3 style="color: #f97316; margin: 0 0 5px 0; font-size: 18px;">Database Fallback Mode (1 User Bug)</h3>
             <p style="font-size: 14px; margin: 0; opacity: 0.9;">
-                The website could not connect to your <strong>Google Sheet</strong> and is using a temporary file. 
+                The website could not connect to your <strong>Google Sheet</strong> (ID: {{ spreadsheet_id | truncate(15) }}...) and is using a temporary file. 
                 <strong>To Fix:</strong> Visit <a href="/api/status" style="color: #3b82f6; text-decoration: underline;">/api/status</a> and follow the instructions to share your sheet!
             </p>
+
         </div>
         <button onclick="this.parentElement.remove()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #9ca3af;">✕</button>
     </div>
