@@ -27,8 +27,9 @@ if not BASE_URL:
 
 # Google Sheets Configuration
 GSHEET_ID = os.environ.get('GSHEET_ID', '1ETo_KdLwhE1Y_mhPXCDjwVhe1xFIPeigyx3qvobOrx4')
-# Path to service account credentials local file
-GSHEET_CREDENTIALS_FILE = 'aqueous-cortex-482804-k1-88c2cdf0fee4.json'
+# Note: In production, the JSON content is passed via environment variable (GSHEET_CREDENTIALS_JSON).
+# Locally, it falls back to this specific file within the same directory.
+GSHEET_CREDENTIALS_FILE = os.getenv('GSHEET_CREDENTIALS_FILE', 'smart-parking-db-489314.json')
 
 # Spreadsheet Access Configuration for Vercel
 # (Optional: Allows passing credential content as raw JSON in env)
