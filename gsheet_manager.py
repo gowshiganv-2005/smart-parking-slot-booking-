@@ -125,7 +125,14 @@ def _get_client():
                    (creds_json.startswith('"') and creds_json.endswith('"')):
                     creds_json = creds_json[1:-1]
                 
-                creds = json.loads(creds_json)
+                try:
+                    # strict=False allows literal newlines inside string values (common in Vercel pastes)
+                    creds = json.loads(creds_json, strict=False)
+                except json.JSONDecodeError:
+                    import ast
+                    # Try fallback to python dict formatting just in case
+                    creds = ast.literal_eval(creds_json)
+
                 # Aggressive cleanup of private_key (handles Vercel's \n vs \\n issues)
                 if 'private_key' in creds:
                     creds['private_key'] = creds['private_key'].replace('\\n', '\n')
