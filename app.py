@@ -14,14 +14,24 @@ import config
 # Load environment variables from .env file
 load_dotenv()
 
-# ─── DATABASE SELECTION ───────────────────────────
+# ─── DATABASE SELECTION WITH FALLBACK ───────────────────────────
 db = None
 is_gsheet = False
 
-print("[INFO] Initializing local database. Ensuring structure...")
-import excel_manager as ex
-db = ex
-db.init_excel()        # Migrate headers and create sheets if needed
+try:
+    import gsheet_manager as gs
+    gs._get_client()       # Test the connection — will raise if invalid
+    db = gs
+    is_gsheet = True
+    print("[INFO] Google Sheets connected successfully. Initializing structure...")
+    db.init_gsheet()       # Migrate headers and create tabs if needed
+except Exception as e:
+    print(f"[WARN] Google Sheets unavailable: {e}")
+    print("[INFO] Falling back to local Excel database. Initializing structure...")
+    import excel_manager as ex
+    db = ex
+    is_gsheet = False
+    db.init_excel()        # Migrate headers and create sheets if needed
 
 import email_service
 import qr_generator
@@ -45,8 +55,16 @@ def add_cache_headers(response):
         response.headers['Cache-Control'] = 'public, max-age=3600'
     return response
 
-# Database is already initialized at the top 
-print(f"[INFO] Solid State DB verified at {config.EXCEL_FILE}")
+# Initialize the selected database on startup
+try:
+    if is_gsheet:
+        db.init_gsheet()
+        print(f"[INFO] Google Sheets DB initialized: {config.GSHEET_ID}")
+    else:
+        db.init_excel()
+        print(f"[INFO] Excel DB initialized at {config.EXCEL_FILE}")
+except Exception as e:
+    print(f"[ERROR] DB initialization failed: {e}")
 
 
 # ─── AUTH DECORATORS ─────────────────────────────────────────────
@@ -185,27 +203,30 @@ def api_health():
     """Health check endpoint for uptime monitoring services."""
     return jsonify({
         'status': 'healthy',
-        'db_mode': 'Local Solid State DB',
-        'version': '5.0.0'
+        'db_mode': 'Google Sheets' if is_gsheet else 'Local Excel',
+        'version': '2.0.0'
     })
 
 @app.route('/api/debug/db')
 @app.route('/api/status')
 def api_status():
-    """System Health Troubleshooting."""
+    """Ultimate Security-Compliant Troubleshooting."""
+    db_mode = 'Google Sheets' if is_gsheet else 'Local Excel (Fallback)'
     return jsonify({
-        'status': 'OK',
-        'database': 'Local Solid State DB',
-        'current_error': None,
-        'service_account': 'N/A',
-        'spreadsheet_id': 'N/A',
+        'status': 'OK' if is_gsheet else 'ACTION_REQUIRED',
+        'database': db_mode,
+        'current_error': global_db_error if not is_gsheet else None,
+        'service_account': gs.get_service_account_email() if is_gsheet else 'N/A',
+        'spreadsheet_id': config.GSHEET_ID if is_gsheet else 'N/A',
         'troubleshooting_steps': [
-            '1. System is running perfectly in standalone mode.',
-            '2. No external connections required.',
-            '3. Database is fully secured and localized.'
+            '1. FOR SECURITY: Github BLOCKED your JSON file push. Good!',
+            '2. Copy the content of your new JSON key.',
+            '3. Go to Vercel/Render -> Environment Variables.',
+            '4. Paste the content as: GSHEET_CREDENTIALS_JSON',
+            '5. Shared your sheet with: ' + (gs.get_service_account_email() if is_gsheet else 'N/A')
         ],
         'counts': {'users': len(db.get_all_users()) if db else 0},
-        'version': '5.0.0 (Pure Standalone)'
+        'version': '4.0.0 (Secure)'
     })
 
 
